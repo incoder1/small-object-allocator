@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="small_object" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="debug-win-gcc-x64">
+				<Option output="bin/debug-win-gcc-x64/small_object" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="bin/debug-win-gcc-x64" />
+				<Option object_output="obj/relase-win-gcc-x64/" />
+				<Option type="3" />
+				<Option compiler="gcc" />
+				<Option createDefFile="1" />
+				<Compiler>
+					<Add option="-Wall" />
+					<Add option="-std=c++0x" />
+					<Add option="-pg" />
+					<Add option="-g" />
+					<Add option="-Og" />
+					<Add directory="include" />
+					<Add directory="D:/cpp/boost_1_60_0" />
+				</Compiler>
+				<Linker>
+					<Add option="-pg -lgmon" />
+					<Add library="boost_system-mt-d.dll" />
+					<Add library="boost_thread-mt-d.dll" />
+					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
+				</Linker>
+			</Target>
+			<Target title="relase-win-gcc-x64">
+				<Option output="bin/relase-win-gcc-x64/small_object" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="bin/relase-win-gcc-x64" />
+				<Option object_output="obj/relase-win-gcc-x64/" />
+				<Option type="3" />
+				<Option compiler="gcc" />
+				<Option createDefFile="1" />
+				<Compiler>
+					<Add option="-O3" />
+					<Add option="-Wall" />
+					<Add option="-std=c++14" />
+					<Add directory="include" />
+					<Add directory="D:/cpp/boost_1_60_0" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+					<Add library="boost_system-mt.dll" />
+					<Add library="boost_thread-mt.dll" />
+					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-fexceptions" />
+		</Compiler>
+		<Unit filename="include/nb_forward_list.hpp" />
+		<Unit filename="include/object.hpp" />
+		<Unit filename="src/object.cpp" />
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+			<lib_finder disable_auto="1" />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

@@ -1,0 +1,12 @@
+/obj
+/bin
+/tmp
+**.save
+**.o
+**.obj
+**.exe
+**.dll
+**.a
+**.out
+**.depend
+**.layout
