@@ -3,11 +3,9 @@
 
 #include <iterator>
 
-#include <boost/noncopyable.hpp>
 #include <boost/atomic.hpp>
 #include <boost/move/move.hpp>
 #include <boost/pool/pool.hpp>
-#include <boost/thread/mutex.hpp>
 
 namespace boost {
 
@@ -142,8 +140,19 @@ public:
 		node_(rhs.node_)
 	{}
 
-	_self& operator=(const _self& rhs) BOOST_NOEXCEPT_OR_NOTHROW {
+	forward_list_const_iterator(const iterator& it) BOOST_NOEXCEPT_OR_NOTHROW:
+		node_(it.node())
+	{}
+
+	_self& operator=(const _self& rhs) BOOST_NOEXCEPT_OR_NOTHROW
+	{
 		node_ = rhs.node_;
+		return *this;
+	}
+
+	_self& operator=(const iterator& it) BOOST_NOEXCEPT_OR_NOTHROW
+	{
+		node_ = it.node();
 		return *this;
 	}
 
@@ -297,7 +306,7 @@ public:
 		return iterator( position.node() );
 	}
 
-	iterator erase_after(const_iterator position) {
+	iterator pop_after(const_iterator position) {
 		node_type *new_next = NULL;
 		node_type *pos = position.node();
 		node_type *to_remove = pos->next();
@@ -335,7 +344,7 @@ public:
 		if( NULL != frnt ) {
 			e = BOOST_MOVE_BASE(E, frnt->element() );
 		}
-		erase_after( const_iterator(head_) );
+		pop_after( const_iterator(head_) );
 	}
 
 	iterator before_begin() BOOST_NOEXCEPT_OR_NOTHROW {
@@ -362,7 +371,7 @@ public:
 
 	const_iterator cend() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		return const_iterator( NULL );
+		return const_iterator(NULL);
 	}
 
 	inline std::size_t size() const BOOST_NOEXCEPT_OR_NOTHROW

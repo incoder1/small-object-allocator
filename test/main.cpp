@@ -105,7 +105,7 @@ BOOST_DECLARE_OBJECT_PTR_T(Button);
 void test_routine()
 {
 	try {
-		for(int i=0; i < 1000000; i++) {
+		for(int i=0; i < 250000; i++) {
 			s_MyWidget wd(new MyWidget());
 			wd->foo();
 			s_MyButton btn(new MyButton());
@@ -119,9 +119,8 @@ void test_routine()
 
 int main(int argc, const char** argv)
 {
-	test_routine();
 	boost::thread_group pool;
-	for(int i=0; i < 4; i++) {
+	for(int i=0; i < 16; i++) {
 		pool.create_thread( boost::bind( test_routine ) );
 	}
 	pool.join_all();
