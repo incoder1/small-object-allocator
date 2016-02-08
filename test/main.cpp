@@ -120,7 +120,7 @@ void test_routine()
 int main(int argc, const char** argv)
 {
 	boost::thread_group pool;
-	for(int i=0; i < 16; i++) {
+	for(int i=0; i < 32; i++) {
 		pool.create_thread( boost::bind( test_routine ) );
 	}
 	pool.join_all();

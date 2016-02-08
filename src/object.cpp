@@ -8,6 +8,7 @@ const std::size_t MAX_SIZE = sizeof(std::size_t) * 16;
 
 namespace detail {
 
+
 // page
 const uint8_t page::MAX_BLOCKS = static_cast<uint8_t>(UCHAR_MAX);
 
@@ -59,15 +60,15 @@ fixed_allocator::fixed_allocator(const std::size_t size):
 	free_current_(NULL)
 {
 	// pre cache pages peer cpu
-	unsigned int cpus = boost::thread::hardware_concurrency();
-	page *pg;
-	for(unsigned int i=0; i < cpus; i++)
-	{
-		pg = new page(size_);
-		pages_.push_front( pg );
-	}
-	alloc_current_.store(pages_.front(), boost::memory_order_relaxed);
-	free_current_.store(pages_.front(), boost::memory_order_relaxed);
+//	unsigned int cpus = boost::thread::hardware_concurrency();
+//	page *pg;
+//	for(unsigned int i=0; i < cpus; i++)
+//	{
+//		pg = new page(size_);
+//		pages_.push_front( pg );
+//	}
+//	alloc_current_.store(pages_.front(), boost::memory_order_relaxed);
+//	free_current_.store(pages_.front(), boost::memory_order_relaxed);
 }
 
 fixed_allocator::~fixed_allocator() BOOST_NOEXCEPT_OR_NOTHROW {
@@ -80,9 +81,9 @@ fixed_allocator::~fixed_allocator() BOOST_NOEXCEPT_OR_NOTHROW {
 	}
 }
 
-void fixed_allocator::collect() BOOST_NOEXCEPT_OR_NOTHROW
+void fixed_allocator::collect() const BOOST_NOEXCEPT_OR_NOTHROW
 {
-	boost::unique_lock<boost::mutex> guard(mtx_);
+	boost::unique_lock<spin_lock> guard(mtx_);
 	pages_list::const_iterator it = pages_.cbegin();
 	pages_list::const_iterator end = pages_.cend();
 	unsigned int cpus = boost::thread::hardware_concurrency();
@@ -101,7 +102,7 @@ void fixed_allocator::collect() BOOST_NOEXCEPT_OR_NOTHROW
 
 void* fixed_allocator::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() const
 {
-	boost::unique_lock<boost::mutex> guard(mtx_);
+	boost::unique_lock<spin_lock> guard(mtx_);
 	page *pg = alloc_current_;
 	uint8_t *result = pg->allocate(size_);
 	if(!result) {
@@ -129,7 +130,7 @@ void* fixed_allocator::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() const
 
 void fixed_allocator::free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr) const BOOST_NOEXCEPT_OR_NOTHROW
 {
-	boost::unique_lock<boost::mutex> guard(mtx_);
+	boost::unique_lock<spin_lock> guard(mtx_);
 	const uint8_t *p = static_cast<const uint8_t*>(ptr);
 	page *pg = free_current_.load(boost::memory_order_relaxed);
 	if( !pg->release_if_in(p, size_) ) {
@@ -150,28 +151,32 @@ void fixed_allocator::free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr) con
 	}
 }
 
+// object_allocator
+
 // allign to the size_t, i.e. on 4 for 32 bit and 8 for for 64 bit
 static BOOST_FORCEINLINE std::size_t align_up(const std::size_t alignment,const std::size_t size)
 {
 	return (size + alignment - 1) & ~(alignment - 1);
 }
 
-// object_allocator
 static const std::size_t MIN_SIZE = align_up( sizeof(std::size_t), sizeof(object) ); // 8 bytes for 32 bit and 16 bytes for 64 bit
 static const std::size_t SHIFT = MIN_SIZE / sizeof(std::size_t); // 2 since object size not changed
 // 14 pools
 static const std::size_t POOLS_COUNT = ( ( MAX_SIZE / sizeof(std::size_t) ) ) - SHIFT;
 
+
 object_allocator* const object_allocator::instance()
 {
 	object_allocator *tmp = _instance.load(boost::memory_order_consume);
 	if (!tmp) {
-		boost::mutex::scoped_lock lock(_mtx);
+		boost::lock_guard<spin_lock> lock(_smtx);
 		tmp = _instance.load(boost::memory_order_consume);
 		if (!tmp) {
-			tmp = new object_allocator();
+			tmp = new object_allocator();;
 			_instance.store(tmp, boost::memory_order_release);
 			std::atexit(&object_allocator::release);
+			boost::thread gc_thread( boost::bind(object_allocator::gc, tmp) );
+			gc_thread.detach();
 		}
 	}
 	return tmp;
@@ -188,10 +193,12 @@ void object_allocator::free BOOST_PREVENT_MACRO_SUBSTITUTION(void *ptr, const st
 	const pool_t* p = pool(size);
 	assert(p);
 	p->free(ptr);
+	cv_.notify_one();
 }
 
 object_allocator::~object_allocator() BOOST_NOEXCEPT_OR_NOTHROW {
-	cv_.notify_all();
+	exit_.store(true, boost::memory_order_seq_cst);
+	cv_.notify_one();
 	pool_t* p = const_cast<pool_t*>(pools_);
 	for(uint8_t i = 0; i < POOLS_COUNT ; i++ )
 	{
@@ -207,26 +214,29 @@ BOOST_FORCEINLINE object_allocator::pool_t* object_allocator::create_pools()
 	return static_cast<pool_t*>(std::malloc( POOLS_COUNT * sizeof(pool_t) ) );
 }
 
-void object_allocator::gc() {
+void object_allocator::gc() BOOST_NOEXCEPT_OR_NOTHROW {
 	while( !exit_) {
-		boost::this_thread::sleep_for( boost::chrono::secconds(10) );
-		pool_t *p = pools_;
+		boost::unique_lock<boost::mutex> lock(mtx_);
+		cv_.wait(lock);
+		const pool_t *p = pools_;
 		for(uint8_t i = 0; i < POOLS_COUNT ; i++ ) {
 			p->collect();
 			++p;
 		}
+		boost::this_thread::interruptible_wait(10000L); // wait for 10 sec until next gc
 	}
 }
 
 object_allocator::object_allocator():
-	pools_( create_pools() )
+	pools_( NULL )
 {
-	pool_t* p = const_cast<pool_t*>(pools_);
+	pool_t* p = create_pools();
+	pools_= p;
 	std::size_t pool_size = MIN_SIZE;
 	for(uint8_t i = 0; i < POOLS_COUNT ; i++ ) {
 		p = new (p) pool_t(pool_size);
 		pool_size += sizeof(std::size_t);
-		++p;
+		p += 1;
 	}
 }
 
@@ -239,15 +249,15 @@ void object_allocator::release() BOOST_NOEXCEPT_OR_NOTHROW {
 	delete _instance.load(boost::memory_order_consume);
 }
 
-boost::mutex object_allocator::_mtx;
-boost::atomic<object_allocator*> object_allocator::_instance(NULL);
+spin_lock object_allocator::_smtx;
+boost::atomic<object_allocator*> volatile object_allocator::_instance(NULL);
 
 } // namespace detail
 
 
 // object
 object::object() BOOST_NOEXCEPT_OR_NOTHROW:
-ref_count_(0)
+	ref_count_(0)
 {}
 
 object::~object() BOOST_NOEXCEPT_OR_NOTHROW

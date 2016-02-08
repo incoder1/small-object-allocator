@@ -60,6 +60,33 @@ private:
 	const uint8_t* end_;
 };
 
+class spin_lock {
+BOOST_MOVABLE_BUT_NOT_COPYABLE(spin_lock)
+private:
+	enum lock_state {LOCKED, UNLOCKED};
+public:
+	spin_lock():
+		state_(UNLOCKED)
+	{}
+
+	void lock() BOOST_NOEXCEPT_OR_NOTHROW
+	{
+		std::size_t spin_count = 0;
+		while( ! state_.exchange(LOCKED, boost::memory_order_consume) )
+		{
+			boost::this_thread::interruptible_wait(++spin_count);
+		}
+	}
+
+	void unlock() BOOST_NOEXCEPT_OR_NOTHROW
+	{
+		state_.store(UNLOCKED, boost::memory_order_release);
+	}
+private:
+	boost::atomic<lock_state> state_;
+};
+
+
 /**
  * \brief Allocates only a signle memory block of the same size
  */
@@ -83,22 +110,21 @@ public:
 	/**
 	 * Collect empty pages, i.e. collect garbage
 	 */
-	void collect() BOOST_NOEXCEPT_OR_NOTHROW;
+	void collect() const BOOST_NOEXCEPT_OR_NOTHROW;
 private:
 	const std::size_t size_;
 	mutable boost::atomic<page*> alloc_current_;
 	mutable boost::atomic<page*> free_current_;
 	mutable pages_list pages_;
-	mutable boost::mutex mtx_;
+	mutable spin_lock mtx_;
 };
 
 /**
  * ! \brief Allocates memory for the small objects
  *  maximum size of small object is sizeof(size_type) * 16
  */
-class object_allocator
+class object_allocator:private boost::noncopyable
 {
-BOOST_MOVABLE_BUT_NOT_COPYABLE(object_allocator)
 private:
 	typedef fixed_allocator pool_t;
 public:
@@ -113,11 +139,12 @@ private:
 	static void release() BOOST_NOEXCEPT_OR_NOTHROW;
 	void gc() BOOST_NOEXCEPT_OR_NOTHROW;
 private:
-	static boost::mutex _mtx;
-	static boost::atomic<object_allocator*> _instance;
+	static spin_lock _smtx;
+	static boost::atomic<object_allocator*> volatile _instance;
+	boost::mutex mtx_;
 	boost::condition_variable cv_;
 	boost::atomic_bool exit_;
-	const pool_t* pools_;
+	pool_t* pools_;
 };
 
 } // namespace detail
