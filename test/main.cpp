@@ -106,9 +106,9 @@ void test_routine()
 {
 	try {
 		for(int i=0; i < 1000000; i++) {
-			s_Widget wd(new Widget());
+			s_MyWidget wd(new MyWidget());
 			wd->foo();
-			s_Button btn(new Button());
+			s_MyButton btn(new MyButton());
 			btn->foo();
 		}
 	} catch(std::exception& exc) {

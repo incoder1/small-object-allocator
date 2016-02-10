@@ -7,6 +7,7 @@
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="debug-win-gcc-x64">
+				<Option platforms="Windows;" />
 				<Option output="bin/debug-win-gcc-x64/small_object" prefix_auto="1" extension_auto="1" />
 				<Option working_dir="bin/debug-win-gcc-x64" />
 				<Option object_output="obj/relase-win-gcc-x64/" />
@@ -14,22 +15,23 @@
 				<Option compiler="gcc" />
 				<Option createDefFile="1" />
 				<Compiler>
-					<Add option="-Wall" />
 					<Add option="-std=c++0x" />
+					<Add option="-Wall" />
 					<Add option="-pg" />
 					<Add option="-g" />
 					<Add option="-Og" />
 					<Add directory="include" />
-					<Add directory="D:/cpp/boost_1_60_0" />
 				</Compiler>
 				<Linker>
+					<Add option="-pg" />
 					<Add option="-pg -lgmon" />
 					<Add library="boost_system-mt-d.dll" />
 					<Add library="boost_thread-mt-d.dll" />
 					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
 				</Linker>
 			</Target>
-			<Target title="relase-win-gcc-x64">
+			<Target title="release-win-gcc-x64">
+				<Option platforms="Windows;Mac;" />
 				<Option output="bin/relase-win-gcc-x64/small_object" prefix_auto="1" extension_auto="1" />
 				<Option working_dir="bin/relase-win-gcc-x64" />
 				<Option object_output="obj/relase-win-gcc-x64/" />
@@ -47,6 +49,30 @@
 					<Add option="-s" />
 					<Add library="boost_system-mt.dll" />
 					<Add library="boost_thread-mt.dll" />
+					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
+				</Linker>
+			</Target>
+			<Target title="debug-gcc-unix-amd64">
+				<Option platforms="Unix;" />
+				<Option output="bin/debug-gcc-unix-amd64/small_object" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="bin/debug-gcc-unix-amd64" />
+				<Option object_output="obj/debug-gcc-unix-amd64" />
+				<Option type="3" />
+				<Option compiler="gcc" />
+				<Option createDefFile="1" />
+				<Compiler>
+					<Add option="-Wall" />
+					<Add option="-pg" />
+					<Add option="-g" />
+					<Add option="-std=gnu++14" />
+					<Add option="-Og" />
+					<Add option="-fPIC" />
+					<Add directory="include" />
+				</Compiler>
+				<Linker>
+					<Add option="-pg" />
+					<Add library="boost_system" />
+					<Add library="boost_thread" />
 					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
 				</Linker>
 			</Target>

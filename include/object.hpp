@@ -13,7 +13,7 @@
 
 #ifdef BOOST_WINDOWS_API
 #	include <windows.h>
-#elif BOOST_POSIX_API
+#elif defined(BOOST_POSIX_API)
 #	include <unistd.h>
 #endif // BOOST_WINDOWS_API
 

@@ -82,7 +82,7 @@ static uint32_t available_logical_cpus()
 	::SYSTEM_INFO sysinfo;
 	::GetSystemInfo(&sysinfo);
 	return sysinfo.dwNumberOfProcessors;
-#elif BOOST_POSIX_API
+#elif defined(BOOST_POSIX_API)
 	return ::sysconf( _SC_NPROCESSORS_ONLN );
 #else
 	return 1UL;

@@ -12,13 +12,14 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
-					<Add option="-Wall" />
 					<Add option="-std=c++0x" />
+					<Add option="-Wall" />
 					<Add option="-pg" />
 					<Add option="-g" />
 					<Add directory="D:/cpp/boost_1_60_0" />
 				</Compiler>
 				<Linker>
+					<Add option="-pg" />
 					<Add option="-pg -lgmon" />
 					<Add library="boost_system-mt-d.dll" />
 					<Add library="boost_thread-mt-d.dll" />
@@ -41,7 +42,26 @@
 					<Add library="boost_system-mt.dll" />
 					<Add library="boost_thread-mt.dll" />
 					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
-					<Add directory="../bin/relase-win-gcc-x64" />
+					<Add directory="../bin/release-win-gcc-x64" />
+				</Linker>
+			</Target>
+			<Target title="debug-unix-gcc-amd64">
+				<Option platforms="Unix;" />
+				<Option output="bin/debug-unix-gcc-amd64/test" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/debug-unix-gcc-amd64/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-std=c++0x" />
+					<Add option="-Wall" />
+					<Add option="-pg" />
+					<Add option="-g" />
+				</Compiler>
+				<Linker>
+					<Add option="-pg" />
+					<Add library="boost_system" />
+					<Add library="boost_thread" />
+					<Add directory="../bin/debug-gcc-unix-amd64" />
 				</Linker>
 			</Target>
 		</Build>
