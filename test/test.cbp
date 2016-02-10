@@ -12,14 +12,14 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
-					<Add option="-std=c++0x" />
-					<Add option="-Wall" />
 					<Add option="-std=c++14" />
+					<Add option="-Wall" />
 					<Add option="-g" />
 					<Add option="-fexceptions" />
 					<Add directory="D:/cpp/boost_1_60_0" />
 				</Compiler>
 				<Linker>
+					<Add option="-pg" />
 					<Add library="boost_system-mt-d.dll" />
 					<Add library="boost_thread-mt-d.dll" />
 					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
