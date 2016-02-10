@@ -18,14 +18,12 @@
 					<Add option="-std=c++0x" />
 					<Add option="-Wall" />
 					<Add option="-std=c++14" />
-					<Add option="-pg" />
 					<Add option="-g" />
 					<Add option="-Og" />
+					<Add option="-fexceptions" />
 					<Add directory="include" />
 				</Compiler>
 				<Linker>
-					<Add option="-pg" />
-					<Add option="-pg -lgmon" />
 					<Add library="boost_system-mt-d.dll" />
 					<Add library="boost_thread-mt-d.dll" />
 					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
@@ -42,14 +40,15 @@
 				<Compiler>
 					<Add option="-O3" />
 					<Add option="-Wall" />
-					<Add option="-std=c++14" />
+					<Add option="-fno-exceptions" />
+					<Add option="-fno-rtti" />
 					<Add directory="include" />
 					<Add directory="D:/cpp/boost_1_60_0" />
 				</Compiler>
 				<Linker>
-					<Add option="-s" />
 					<Add library="boost_system-mt.dll" />
 					<Add library="boost_thread-mt.dll" />
+					<Add library="boost_exception-mt" />
 					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
 				</Linker>
 			</Target>
@@ -78,9 +77,6 @@
 				</Linker>
 			</Target>
 		</Build>
-		<Compiler>
-			<Add option="-fexceptions" />
-		</Compiler>
 		<Unit filename="include/nb_forward_list.hpp" />
 		<Unit filename="include/object.hpp" />
 		<Unit filename="src/object.cpp" />

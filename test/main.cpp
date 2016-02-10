@@ -4,10 +4,6 @@
 #include <boost/noncopyable.hpp>
 #include <boost/thread.hpp>
 
-#include <boost/lockfree/queue.hpp>
-
-#include <mutex>
-
 struct rect {
 	int l,t,r,b;
 };
@@ -104,23 +100,33 @@ BOOST_DECLARE_OBJECT_PTR_T(Button);
 
 void test_routine()
 {
-	try {
-		for(int i=0; i < 250000; i++) {
-			s_MyWidget wd(new MyWidget());
-			wd->foo();
-			s_MyButton btn(new MyButton());
-			btn->foo();
-		}
-	} catch(std::exception& exc) {
-        std::cerr<<exc.what()<<std::endl;
+	for(int i=0; i < 250000; i++) {
+		s_Widget wd(new Widget());
+		wd->foo();
+		s_Button btn(new Button());
+		btn->foo();
 	}
 }
+
+#ifdef BOOST_NO_EXCEPTIONS
+
+namespace boost {
+
+void throw_exception(std::exception const & e)
+{
+	std::cerr<<"error" << e.what() <<std::endl;
+	std::exit(-1);
+}
+
+}
+
+#endif // BOOST_NO_EXCEPTIONS
 
 
 int main(int argc, const char** argv)
 {
 	boost::thread_group pool;
-	for(int i=0; i < 32; i++) {
+	for(int i=0; i < 4; i++) {
 		pool.create_thread( boost::bind( test_routine ) );
 	}
 	pool.join_all();
