@@ -126,7 +126,7 @@ void throw_exception(std::exception const & e)
 int main(int argc, const char** argv)
 {
 	boost::thread_group pool;
-	for(int i=0; i < 4; i++) {
+	for(int i=0; i < 32; i++) {
 		pool.create_thread( boost::bind( test_routine ) );
 	}
 	pool.join_all();

@@ -51,15 +51,16 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
-					<Add option="-std=c++0x" />
+					<Add option="-fexpensive-optimizations" />
+					<Add option="-O3" />
 					<Add option="-Wall" />
-					<Add option="-pg" />
-					<Add option="-g" />
+					<Add option="-std=gnu++14" />
+					<Add option="-Og" />
 				</Compiler>
 				<Linker>
-					<Add option="-pg" />
 					<Add library="boost_system" />
 					<Add library="boost_thread" />
+					<Add library="pthread" />
 					<Add directory="../bin/debug-gcc-unix-amd64" />
 				</Linker>
 			</Target>

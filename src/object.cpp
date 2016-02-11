@@ -50,16 +50,12 @@ inline uint8_t* page::allocate(const std::size_t block_size) BOOST_NOEXCEPT_OR_N
 	return result;
 }
 
-inline bool page::release_if_in(const uint8_t *ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW {
-	if( ptr >= begin_ && ptr < end_ )
-	{
-		assert( (ptr - begin_) % block_size == 0 );
-		*(const_cast<uint8_t*>(ptr)) = position_;
-		position_ =  static_cast<uint8_t>( (ptr - begin_) / block_size );
-		++free_blocks_;
-		return true;
-	}
-	return false;
+void page::release(const uint8_t *ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
+{
+    assert( (ptr - begin_) % block_size == 0 );
+	*(const_cast<uint8_t*>(ptr)) = position_;
+	position_ =  static_cast<uint8_t>( (ptr - begin_) / block_size );
+	++free_blocks_;
 }
 
 //fixed_allocator
@@ -68,8 +64,8 @@ fixed_allocator::fixed_allocator(const std::size_t block_size):
 	free_current_(NULL)
 {
 	page* pg = create_new_page(block_size);
-	alloc_current_.store(pg, boost::memory_order_relaxed);
-	free_current_.store(pg, boost::memory_order_relaxed);
+	alloc_current_ = pg;
+	free_current_ = pg;
 }
 
 BOOST_FORCEINLINE page* fixed_allocator::create_new_page(const std::size_t size) const
@@ -99,7 +95,7 @@ void fixed_allocator::collect() BOOST_NOEXCEPT_OR_NOTHROW {
 		pages_list::iterator end = pages_.end();
 		while(it != end) {
 			page* pg = *it;
-			if( pg->is_empty() && alloc_current_.load() == pg ) {
+			if( pg->is_empty() && alloc_current_ == pg ) {
 				boost::unique_lock<boost::mutex> guard(mtx_, boost::try_to_lock);
 				if( guard.owns_lock() ) {
 					release_page(pg);
@@ -112,56 +108,57 @@ void fixed_allocator::collect() BOOST_NOEXCEPT_OR_NOTHROW {
 
 void* fixed_allocator::malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size) BOOST_THROWS(std::bad_alloc)
 {
-	uint8_t *result = NULL;
-	boost::unique_lock<boost::mutex> guard(mtx_, boost::try_to_lock);
-	if( guard.owns_lock() ) {
+	    uint8_t *result = NULL;
 		page *pg = alloc_current_;
-		if(pg) {
-			result = pg->allocate(size);
-		} else {
-			// not pages allocated yet, or no space left
+		if(!pg) {
+            // not pages allocated yet, or no space left
 			pg =  create_new_page(size);
 			result = pg->allocate(size);
+			boost::unique_lock<boost::mutex> guard(mtx_);
 			pages_.push_front( pg );
-			alloc_current_.store(pg, boost::memory_order_seq_cst);
-			free_current_.store(pg, boost::memory_order_seq_cst);
-		}
+			alloc_current_ = pg;
+			free_current_ = pg;
+		} else {
+            boost::unique_lock<boost::mutex> guard(mtx_, boost::try_to_lock);
+            if( guard.owns_lock() ) {
+                result = pg->allocate(size);
+            }
+        }
 		if(!result) {
-			pages_list::iterator it = pages_.begin();
-			pages_list::iterator end = pages_.end();
-			// if previws failed, try to allocate from an exising page
-			while( it != end ) {
-				pg = (*it);
-				assert(pg);
-				result = pg->allocate(size);
-				if(result) break;
-				++it;
-			}
-			alloc_current_.store(pg, boost::memory_order_seq_cst);
-		}
-	}
+                pages_list::iterator it = pages_.begin();
+                pages_list::iterator end = pages_.end();
+                // if previws failed, try to allocate from an exising page
+                while( it != end ) {
+                    pg = (*it);
+                    boost::unique_lock<boost::mutex> guard(mtx_, boost::try_to_lock);
+                    if( guard.owns_lock() ) result = pg->allocate(size);
+                    if(result) break;
+                    ++it;
+                }
+                alloc_current_= pg;
+        }
 	return static_cast<void*>(result);
 }
 
 bool fixed_allocator::free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr,const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW {
 	const uint8_t *p = static_cast<const uint8_t*>(ptr);
-	boost::unique_lock<boost::mutex> guard(mtx_);
-	page *pg = free_current_.load(boost::memory_order_relaxed);
-	bool result = pg->release_if_in(p, size);
-	if(!result)
-	{
+	page *pg = free_current_;
+	bool result = pg->in(p);
+	if(!result) {
 		pages_list::iterator it = pages_.begin();
 		pages_list::iterator end = pages_.end();
 		while(it != end) {
 			pg = *it;
-			result = pg->release_if_in(p, size);
-			if(result) {
-				free_current_.store(pg, boost::memory_order_seq_cst);
-				break;
-			}
+			result  =  pg->in(p);
+			if(result)  break;
 			++it;
 		}
 	}
+	if(result) {
+        boost::unique_lock<boost::mutex> guard(mtx_);
+        pg->release(p,size);
+        free_current_ = pg;
+    }
 	return result;
 }
 
@@ -208,6 +205,7 @@ void pool::free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEP
 	while(!released) {
 		released = (*it)->free(ptr,block_size_);
 		if(++it == end) {
+            boost::this_thread::yield();
 			it = allocators_.cbegin();
 		}
 	};
@@ -279,13 +277,13 @@ object_allocator::~object_allocator() BOOST_NOEXCEPT_OR_NOTHROW {
 
 void* object_allocator::malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size)
 {
-	pool_t* p = pool(size);
+	pool_t* p = get(size);
 	assert(p);
 	return p->malloc();
 }
 
 void object_allocator::free BOOST_PREVENT_MACRO_SUBSTITUTION(void *ptr, const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW {
-	pool_t* p = pool(size);
+	pool_t* p = get(size);
 	assert(p);
 	p->free(ptr);
 }
@@ -294,7 +292,7 @@ void object_allocator::collect_free_memory() const
 {
 	pool_t* p;
 	for(;;) {
-		boost::this_thread::interruptible_wait(10000L);
+		boost::this_thread::sleep_for( boost::chrono::seconds(10) );
 		p = pools_;
 		for(uint8_t i = 0; i < POOLS_COUNT ; i++ )
 		{
@@ -304,8 +302,7 @@ void object_allocator::collect_free_memory() const
 	}
 }
 
-
-BOOST_FORCEINLINE object_allocator::pool_t* object_allocator::pool(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW {
+object_allocator::pool_t* object_allocator::get(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW {
 	std::size_t index = ( align_up(sizeof(std::size_t),size) / sizeof(std::size_t) ) - SHIFT;
 	return pools_ + index;
 }

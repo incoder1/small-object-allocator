@@ -56,10 +56,14 @@ public:
 	 * \param ptr pointer on allocated memory
 	 * \param bloc_size size of minimal allocated block
 	 */
-	inline bool release_if_in(const uint8_t *ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
+	inline void release(const uint8_t *ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
 
 	BOOST_FORCEINLINE bool is_empty() {
 		return free_blocks_ == MAX_BLOCKS;
+	}
+
+	BOOST_FORCEINLINE  bool in(const uint8_t *ptr) {
+        return ptr >= begin_ && ptr < end_;
 	}
 
 private:
@@ -97,8 +101,8 @@ private:
 	BOOST_FORCEINLINE page* create_new_page(std::size_t size) const;
 	BOOST_FORCEINLINE void release_page(page* const pg) const BOOST_NOEXCEPT_OR_NOTHROW;
 private:
-	boost::atomic<page*> alloc_current_;
-	boost::atomic<page*> free_current_;
+	page* alloc_current_;
+	page* free_current_;
 	pages_list pages_;
 	boost::mutex mtx_;
 };
@@ -135,7 +139,7 @@ public:
 private:
 	explicit object_allocator();
 	void collect_free_memory() const;
-	BOOST_FORCEINLINE pool_t* pool(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
+	pool_t* get(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
 	static void release() BOOST_NOEXCEPT_OR_NOTHROW;
 private:
 	static boost::mutex _smtx;
