@@ -2,7 +2,8 @@
 #include <object.hpp>
 
 #include <boost/noncopyable.hpp>
-#include <boost/thread.hpp>
+#include <thread>
+#include <vector>
 
 struct rect {
 	int l,t,r,b;
@@ -108,27 +109,17 @@ void test_routine()
 	}
 }
 
-#ifdef BOOST_NO_EXCEPTIONS
-
-namespace boost {
-
-void throw_exception(std::exception const & e)
-{
-	std::cerr<<"error" << e.what() <<std::endl;
-	std::exit(-1);
-}
-
-}
-
-#endif // BOOST_NO_EXCEPTIONS
-
 
 int main(int argc, const char** argv)
 {
-	boost::thread_group pool;
+	std::vector<std::thread> workers;
 	for(int i=0; i < 32; i++) {
-		pool.create_thread( boost::bind( test_routine ) );
+		workers.push_back( std::thread( std::bind( test_routine ) ) );
 	}
-	pool.join_all();
+	for (std::thread &t: workers) {
+      if (t.joinable()) {
+        t.join();
+      }
+    }
 	return 0;
 }

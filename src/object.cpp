@@ -6,7 +6,8 @@ namespace boost {
 
 void throw_exception(std::exception const & e)
 {
-	std::new_handler();
+	std::fprintf(stderr, e.what() );
+	std::exit(-1);
 }
 
 #endif // BOOST_NO_EXCEPTIONS
@@ -18,7 +19,7 @@ const std::size_t MAX_SIZE = sizeof(std::size_t) * 16;
 namespace detail {
 
 // page
-const uint8_t page::MAX_BLOCKS = static_cast<uint8_t>(UCHAR_MAX);
+const uint8_t page::MAX_BLOCKS = UCHAR_MAX;
 
 page::page(const uint8_t block_size, const uint8_t* begin) BOOST_NOEXCEPT_OR_NOTHROW:
 	position_(0),
@@ -33,11 +34,6 @@ page::page(const uint8_t block_size, const uint8_t* begin) BOOST_NOEXCEPT_OR_NOT
 		p += block_size;
 	}
 }
-
-#if defined(BOOST_NO_CXX11_DEFAULTED_FUNCTIONS) || defined(BOOST_NO_CXX11_NON_PUBLIC_DEFAULTED_FUNCTIONS)
-page::~page() BOOST_NOEXCEPT_OR_NOTHROW
-{}
-#endif // default destructor
 
 inline uint8_t* page::allocate(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW {
 	uint8_t *result = NULL;
@@ -70,18 +66,20 @@ fixed_allocator::fixed_allocator(const std::size_t block_size):
 
 BOOST_FORCEINLINE page* fixed_allocator::create_new_page(const std::size_t size) const
 {
-	uint8_t *ptr = new uint8_t[sizeof(page) + size * page::MAX_BLOCKS ];
-	return new (static_cast<void*>(ptr)) page(size, ptr+sizeof(page) );
+	void *ptr = sys::xmalloc( sizeof(page) + (size * page::MAX_BLOCKS) );
+	const uint8_t *begin = static_cast<uint8_t*>(ptr) + sizeof(page);
+	return new (ptr) page(size, begin);
 }
 
 BOOST_FORCEINLINE void fixed_allocator::release_page(page* const pg) const BOOST_NOEXCEPT_OR_NOTHROW
 {
 	assert(pg);
-	pg->~page();
-	delete [] reinterpret_cast<uint8_t*>(pg);
+	// no custuctor call needed
+	sys::xfree( static_cast<void*>(pg) );
 }
 
-fixed_allocator::~fixed_allocator() BOOST_NOEXCEPT_OR_NOTHROW {
+fixed_allocator::~fixed_allocator() BOOST_NOEXCEPT_OR_NOTHROW
+{
 	pages_list::iterator it = pages_.begin();
 	pages_list::iterator end = pages_.end();
 	for( ;it != end; ++it )
@@ -90,53 +88,36 @@ fixed_allocator::~fixed_allocator() BOOST_NOEXCEPT_OR_NOTHROW {
 	}
 }
 
-void fixed_allocator::collect() BOOST_NOEXCEPT_OR_NOTHROW {
+void* fixed_allocator::malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size) BOOST_THROWS(std::bad_alloc)
+{
+	uint8_t *result = NULL;
+	boost::unique_lock<spin_lock> guard(mtx_, boost::try_to_lock);
+	page *pg = alloc_current_;
+	if( guard.owns_lock() ) {
+		result = pg->allocate(size);
+	} else {
+		return NULL;
+	}
+	if(!result) {
 		pages_list::iterator it = pages_.begin();
 		pages_list::iterator end = pages_.end();
-		while(it != end) {
-			page* pg = *it;
-			if( pg->is_empty() && alloc_current_ == pg ) {
-				boost::unique_lock<boost::mutex> guard(mtx_, boost::try_to_lock);
-				if( guard.owns_lock() ) {
-					release_page(pg);
-					pages_.erase(it);
-				}
+		// if previws failed, try to allocate from an exising page
+		while( it != end ) {
+			pg = (*it);
+			result = pg->allocate(size);
+			if(result) {
+				break;
 			}
 			++it;
 		}
-}
-
-void* fixed_allocator::malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size) BOOST_THROWS(std::bad_alloc)
-{
-	    uint8_t *result = NULL;
-		page *pg = alloc_current_;
-		if(!pg) {
-            // not pages allocated yet, or no space left
-			pg =  create_new_page(size);
-			result = pg->allocate(size);
-			boost::unique_lock<boost::mutex> guard(mtx_);
-			pages_.push_front( pg );
-			alloc_current_ = pg;
-			free_current_ = pg;
-		} else {
-            boost::unique_lock<boost::mutex> guard(mtx_, boost::try_to_lock);
-            if( guard.owns_lock() ) {
-                result = pg->allocate(size);
-            }
-        }
-		if(!result) {
-                pages_list::iterator it = pages_.begin();
-                pages_list::iterator end = pages_.end();
-                // if previws failed, try to allocate from an exising page
-                while( it != end ) {
-                    pg = (*it);
-                    boost::unique_lock<boost::mutex> guard(mtx_, boost::try_to_lock);
-                    if( guard.owns_lock() ) result = pg->allocate(size);
-                    if(result) break;
-                    ++it;
-                }
-                alloc_current_= pg;
-        }
+	}
+	if(!result) {
+		pg =  create_new_page(size);
+		result = pg->allocate(size);
+		pages_.push_front( pg );
+		free_current_ = pg;
+	}
+	alloc_current_ = pg;
 	return static_cast<void*>(result);
 }
 
@@ -155,7 +136,7 @@ bool fixed_allocator::free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr,cons
 		}
 	}
 	if(result) {
-        boost::unique_lock<boost::mutex> guard(mtx_);
+        boost::unique_lock<spin_lock> guard(mtx_);
         pg->release(p,size);
         free_current_ = pg;
     }
@@ -179,7 +160,7 @@ pool::~pool() BOOST_NOEXCEPT_OR_NOTHROW
 }
 
 
-void *pool::malloc BOOST_PREVENT_MACRO_SUBSTITUTION()
+inline void *pool::malloc BOOST_PREVENT_MACRO_SUBSTITUTION()
 {
 	void *result = NULL;
 	fa_list::const_iterator it = allocators_.cbegin();
@@ -197,7 +178,7 @@ void *pool::malloc BOOST_PREVENT_MACRO_SUBSTITUTION()
 	return result;
 }
 
-void pool::free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW
+inline void pool::free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW
 {
 	fa_list::const_iterator it = allocators_.cbegin();
 	fa_list::const_iterator end = allocators_.cend();
@@ -209,15 +190,6 @@ void pool::free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEP
 			it = allocators_.cbegin();
 		}
 	};
-}
-
-void pool::collect_unlocked_memory() const BOOST_NOEXCEPT_OR_NOTHROW {
-	fa_list::const_iterator it = allocators_.cbegin();
-	fa_list::const_iterator end = allocators_.cend();
-	while(it != end) {
-		(*it)->collect();
-		++it;
-	}
 }
 
 // object_allocator
@@ -238,7 +210,7 @@ object_allocator* const object_allocator::instance()
 {
 	object_allocator *tmp = _instance.load(boost::memory_order_consume);
 	if (!tmp) {
-		boost::lock_guard<boost::mutex> lock(_smtx);
+		boost::lock_guard<spin_lock> lock(_smtx);
 		tmp = _instance.load(boost::memory_order_consume);
 		if (!tmp) {
 			tmp = new object_allocator();
@@ -250,8 +222,7 @@ object_allocator* const object_allocator::instance()
 }
 
 object_allocator::object_allocator():
-	pools_( NULL )//,
-	//gc_thread_( boost::bind(object_allocator::collect_free_memory, this) )
+	pools_( NULL )
 {
 	pool_t* p = static_cast<pool_t*>(std::malloc(POOLS_COUNT * sizeof(pool_t) ) );
 	pools_= p;
@@ -264,8 +235,6 @@ object_allocator::object_allocator():
 }
 
 object_allocator::~object_allocator() BOOST_NOEXCEPT_OR_NOTHROW {
-	//gc_thread_.interrupt();
-	//gc_thread_.join();
 	pool_t* p = pools_;
 	for(uint8_t i = 0; i < POOLS_COUNT ; i++ )
 	{
@@ -275,31 +244,17 @@ object_allocator::~object_allocator() BOOST_NOEXCEPT_OR_NOTHROW {
 	std::free(pools_);
 }
 
-void* object_allocator::malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size)
+BOOST_FORCEINLINE void* object_allocator::malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size)
 {
 	pool_t* p = get(size);
 	assert(p);
 	return p->malloc();
 }
 
-void object_allocator::free BOOST_PREVENT_MACRO_SUBSTITUTION(void *ptr, const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW {
+BOOST_FORCEINLINE void object_allocator::free BOOST_PREVENT_MACRO_SUBSTITUTION(void *ptr, const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW {
 	pool_t* p = get(size);
 	assert(p);
 	p->free(ptr);
-}
-
-void object_allocator::collect_free_memory() const
-{
-	pool_t* p;
-	for(;;) {
-		boost::this_thread::sleep_for( boost::chrono::seconds(10) );
-		p = pools_;
-		for(uint8_t i = 0; i < POOLS_COUNT ; i++ )
-		{
-			p->collect_unlocked_memory();
-			++p;
-		}
-	}
 }
 
 object_allocator::pool_t* object_allocator::get(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW {
@@ -311,7 +266,7 @@ void object_allocator::release() BOOST_NOEXCEPT_OR_NOTHROW {
 	delete _instance.load(boost::memory_order_consume);
 }
 
-boost::mutex object_allocator::_smtx;
+spin_lock object_allocator::_smtx;
 boost::atomic<object_allocator*> volatile object_allocator::_instance(NULL);
 
 } // namespace detail
@@ -330,18 +285,17 @@ void* object::operator new(std::size_t bytes) BOOST_THROWS(std::bad_alloc)
 	void* result = NULL;
 	if(bytes <= MAX_SIZE) {
 		result = detail::object_allocator::instance()->malloc(bytes);
+		if( ! result ) {
+			boost::throw_exception( std::bad_alloc() );
+		}
 	} else {
 		result = ::operator new(bytes);
-	}
-	if( ! result ) {
-		boost::throw_exception( std::bad_alloc() );
 	}
 	return result;
 }
 
 void object::operator delete(void *ptr,std::size_t bytes) BOOST_NOEXCEPT_OR_NOTHROW {
-	if(bytes <= MAX_SIZE)
-	{
+	if(bytes <= MAX_SIZE) {
 		detail::object_allocator::instance()->free(ptr, bytes);
 	} else {
 		::operator delete(ptr);

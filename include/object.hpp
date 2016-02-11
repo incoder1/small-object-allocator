@@ -3,13 +3,13 @@
 
 #include <cstddef>
 #include <new>
-#include <list>
+#include <forward_list>
 
 #include "nb_forward_list.hpp"
+#include "spinlock.hpp"
+#include "sys_allocator.hpp"
 
-#include <boost/atomic.hpp>
 #include <boost/intrusive_ptr.hpp>
-#include <boost/thread/thread.hpp>
 #include <boost/exception/exception.hpp>
 
 #ifndef BOOST_THROWS
@@ -29,21 +29,25 @@ extern BOOST_SYMBOL_VISIBLE const std::size_t MAX_SIZE;
 
 namespace detail {
 
+using smallobject::spin_lock;
+
 /**
  * ! \brief A chunk of allocated memory divided on UCHAR_MAX of fixed blocks
  */
-class page {
-BOOST_MOVABLE_BUT_NOT_COPYABLE(page)
+struct page {
+#if !defined(BOOST_NO_CXX11_DELETED_FUNCTIONS)
+      page( const page& ) = delete;
+      page& operator=( const page& ) = delete;
+      ~page() = delete;
+#else
+  private:  // emphasize the following members are private
+      object( const object& );
+      object& operator=( const object& );
+#endif // no deleted functions
 public:
 	static const uint8_t MAX_BLOCKS;
 
 	page(const uint8_t block_size, const uint8_t* begin) BOOST_NOEXCEPT_OR_NOTHROW;
-
-#if !defined(BOOST_NO_CXX11_DEFAULTED_FUNCTIONS) && !defined(BOOST_NO_CXX11_NON_PUBLIC_DEFAULTED_FUNCTIONS)
-	~page() = default;
-#else
-	~page() BOOST_NOEXCEPT_OR_NOTHROW;
-#endif
 
 	/**
 	 * Allocates memory blocks
@@ -56,7 +60,7 @@ public:
 	 * \param ptr pointer on allocated memory
 	 * \param bloc_size size of minimal allocated block
 	 */
-	inline void release(const uint8_t *ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
+	inline void release(const uint8_t* ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
 
 	BOOST_FORCEINLINE bool is_empty() {
 		return free_blocks_ == MAX_BLOCKS;
@@ -80,7 +84,7 @@ class fixed_allocator {
 BOOST_MOVABLE_BUT_NOT_COPYABLE(fixed_allocator)
 private:
 	/// Vector of memory block pages
-	typedef std::list<page*> pages_list;
+	typedef std::forward_list<page*> pages_list;
 public:
 	/// Constructs new fixed allocator of specific block size
 	explicit fixed_allocator(const std::size_t block_size);
@@ -93,10 +97,6 @@ public:
 	* \param ptr pointer to the allocated memory
 	*/
 	bool free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr,const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
-	/**
-	 * Collect empty pages, i.e. collect garbage
-	 */
-	void collect() BOOST_NOEXCEPT_OR_NOTHROW;
 private:
 	BOOST_FORCEINLINE page* create_new_page(std::size_t size) const;
 	BOOST_FORCEINLINE void release_page(page* const pg) const BOOST_NOEXCEPT_OR_NOTHROW;
@@ -104,7 +104,7 @@ private:
 	page* alloc_current_;
 	page* free_current_;
 	pages_list pages_;
-	boost::mutex mtx_;
+	spin_lock mtx_;
 };
 
 class pool
@@ -115,9 +115,8 @@ private:
 public:
 	explicit pool(const std::size_t block_size);
 	~pool() BOOST_NOEXCEPT_OR_NOTHROW;
-	void *malloc BOOST_PREVENT_MACRO_SUBSTITUTION();
-	void free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW;
-	void collect_unlocked_memory() const BOOST_NOEXCEPT_OR_NOTHROW;
+	inline void *malloc BOOST_PREVENT_MACRO_SUBSTITUTION();
+	inline void free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW;
 private:
 	const std::size_t block_size_;
 	fa_list allocators_;
@@ -133,8 +132,8 @@ private:
 	typedef pool pool_t;
 public:
 	static object_allocator* const instance();
-	void* malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size);
-	void free BOOST_PREVENT_MACRO_SUBSTITUTION(void *ptr, const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
+	BOOST_FORCEINLINE void* malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size);
+	BOOST_FORCEINLINE void free BOOST_PREVENT_MACRO_SUBSTITUTION(void *ptr, const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
 	~object_allocator() BOOST_NOEXCEPT_OR_NOTHROW;
 private:
 	explicit object_allocator();
@@ -142,10 +141,9 @@ private:
 	pool_t* get(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
 	static void release() BOOST_NOEXCEPT_OR_NOTHROW;
 private:
-	static boost::mutex _smtx;
+	static spin_lock _smtx;
 	static boost::atomic<object_allocator*> volatile _instance;
 	pool_t* pools_;
-	//boost::thread gc_thread_;
 };
 
 } // namespace detail

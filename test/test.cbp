@@ -12,11 +12,14 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
-					<Add option="-std=c++14" />
+					<Add option="-Wextra" />
 					<Add option="-Wall" />
+					<Add option="-std=c++0x" />
 					<Add option="-g" />
+					<Add option="-Og" />
 					<Add option="-fexceptions" />
 					<Add directory="D:/cpp/boost_1_60_0" />
+					<Add directory="include" />
 				</Compiler>
 				<Linker>
 					<Add option="-pg" />
@@ -32,16 +35,19 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
+					<Add option="-fexpensive-optimizations" />
 					<Add option="-O3" />
+					<Add option="-std=c++14" />
 					<Add option="-fno-exceptions" />
 					<Add option="-fno-rtti" />
 					<Add directory="D:/cpp/boost_1_60_0" />
+					<Add directory="include" />
 				</Compiler>
 				<Linker>
 					<Add library="boost_system-mt.dll" />
 					<Add library="boost_thread-mt.dll" />
 					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
-					<Add directory="../bin/release-win-gcc-x64" />
+					<Add directory="../bin/ release-win-gcc-x64-static" />
 				</Linker>
 			</Target>
 			<Target title="debug-unix-gcc-amd64">
@@ -56,6 +62,7 @@
 					<Add option="-Wall" />
 					<Add option="-std=gnu++14" />
 					<Add option="-Og" />
+					<Add directory="include" />
 				</Compiler>
 				<Linker>
 					<Add library="boost_system" />

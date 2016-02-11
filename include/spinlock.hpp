@@ -1,0 +1,45 @@
+#ifndef __SMALL_OBJECT_SPINLOCK_HPP_INCLUDED__
+#define __SMALL_OBJECT_SPINLOCK_HPP_INCLUDED__
+
+#include <boost/atomic.hpp>
+#include <boost/thread/thread_only.hpp>
+#include <boost/noncopyable.hpp>
+
+#ifdef BOOST_HAS_PRAGMA_ONCE
+#pragma once
+#endif // BOOST_HAS_PRAGMA_ONCE
+
+namespace boost {
+
+namespace smallobject {
+
+class spin_lock:private boost::noncopyable {
+private:
+	enum _state {LOCKED, UNLOCKED};
+public:
+	spin_lock() BOOST_NOEXCEPT_OR_NOTHROW:
+		state_(UNLOCKED)
+	{}
+	inline void lock() BOOST_NOEXCEPT_OR_NOTHROW
+	{
+		std::size_t spin_count = 0;
+		while( !state_.exchange(LOCKED, boost::memory_order_acquire) )
+		{
+			boost::this_thread::interruptible_wait(++spin_count);
+		}
+	}
+	BOOST_FORCEINLINE bool try_lock() BOOST_NOEXCEPT_OR_NOTHROW {
+		return state_.exchange(LOCKED, boost::memory_order_acquire);
+	}
+	BOOST_FORCEINLINE void unlock() BOOST_NOEXCEPT_OR_NOTHROW {
+		state_.store(UNLOCKED, boost::memory_order_release);
+	}
+private:
+	boost::atomic<_state> state_;
+};
+
+} // smallobject
+
+} // boost
+
+#endif // __SMALL_OBJECT_SPINLOCK_HPP_INCLUDED__
