@@ -17,9 +17,9 @@
 				<Compiler>
 					<Add option="-fexpensive-optimizations" />
 					<Add option="-O3" />
+					<Add option="-std=c++0x" />
 					<Add option="-Wextra" />
 					<Add option="-Wall" />
-					<Add option="-std=c++0x" />
 					<Add option="-g" />
 					<Add option="-Og" />
 					<Add option="-fexceptions" />
@@ -28,7 +28,6 @@
 					<Add directory="include/win" />
 				</Compiler>
 				<Linker>
-					<Add option="-pg" />
 					<Add library="boost_system-mt-d.dll" />
 					<Add library="boost_thread-mt-d.dll" />
 					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
@@ -45,8 +44,8 @@
 				<Compiler>
 					<Add option="-fexpensive-optimizations" />
 					<Add option="-O3" />
+					<Add option="-std=c++11" />
 					<Add option="-Wall" />
-					<Add option="-std=c++0x" />
 					<Add option="-fno-exceptions" />
 					<Add option="-fno-rtti" />
 					<Add directory="include" />
@@ -54,6 +53,7 @@
 					<Add directory="include/win" />
 				</Compiler>
 				<Linker>
+					<Add option="-flto" />
 					<Add library="boost_system-mt.dll" />
 					<Add library="boost_thread-mt.dll" />
 					<Add library="boost_exception-mt" />
@@ -69,17 +69,18 @@
 				<Option compiler="gcc" />
 				<Option createDefFile="1" />
 				<Compiler>
-					<Add option="-fexpensive-optimizations" />
-					<Add option="-O3" />
+					<Add option="-std=c++11" />
 					<Add option="-Wall" />
+					<Add option="-pg" />
+					<Add option="-g" />
 					<Add option="-std=gnu++14" />
 					<Add option="-Og" />
 					<Add directory="include" />
 				</Compiler>
 				<Linker>
+					<Add option="-pg" />
 					<Add library="boost_system" />
 					<Add library="boost_thread" />
-					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
 				</Linker>
 			</Target>
 			<Target title=" release-win-gcc-x64-static">
@@ -106,6 +107,51 @@
 					<Add library="boost_thread-mt.dll" />
 					<Add library="boost_exception-mt" />
 					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
+				</Linker>
+			</Target>
+			<Target title="release-gcc-unix-amd64">
+				<Option platforms="Unix;" />
+				<Option output="bin/release-gcc-unix-amd64/small_object" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="" />
+				<Option object_output="obj/release-gcc-unix-amd64" />
+				<Option type="2" />
+				<Option compiler="gcc" />
+				<Option createDefFile="1" />
+				<Compiler>
+					<Add option="-fexpensive-optimizations" />
+					<Add option="-O3" />
+					<Add option="-Wextra" />
+					<Add option="-Wall" />
+					<Add option="-fno-exceptions" />
+					<Add option="-fno-rtti" />
+					<Add option="-std=gnu++14" />
+					<Add directory="include" />
+				</Compiler>
+				<Linker>
+					<Add library="boost_system" />
+					<Add library="boost_thread" />
+				</Linker>
+			</Target>
+			<Target title="release-clang-unix-amd64">
+				<Option platforms="Unix;" />
+				<Option output="bin/release-clang-unix-amd64/small_object" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="bin/release-clang-unix-amd64" />
+				<Option object_output="obj/release-clang-unix-amd64" />
+				<Option type="3" />
+				<Option compiler="clang" />
+				<Option createDefFile="1" />
+				<Option projectCompilerOptionsRelation="1" />
+				<Compiler>
+					<Add option="-O3" />
+					<Add option="-std=c++14" />
+					<Add option="-emit-llvm" />
+					<Add option="-fno-exceptions" />
+					<Add option="-fno-rtti" />
+					<Add directory="include" />
+				</Compiler>
+				<Linker>
+					<Add library="boost_system" />
+					<Add library="boost_thread" />
 				</Linker>
 			</Target>
 		</Build>

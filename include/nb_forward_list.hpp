@@ -238,18 +238,6 @@ public:
 		head_ = new (ptr) node_type();
 	}
 
-	forward_list(BOOST_RV_REF(forward_list) rhs) BOOST_NOEXCEPT_OR_NOTHROW:
-		head_( BOOST_MOVE_BASE(atomic<node_type*>, rhs.head_ ) ),
-		node_allocator_( BOOST_MOVE_BASE(node_allocator, rhs.allocator_) )
-	{}
-
-	forward_list& operator=(BOOST_RV_REF(forward_list) rhs) BOOST_NOEXCEPT_OR_NOTHROW
-	{
-		head_ = BOOST_MOVE_BASE(atomic<node_type*>, rhs.head_ );
-		node_allocator_ = BOOST_MOVE_BASE(node_allocator, rhs.allocator_);
-		return *this;
-	}
-
 	~forward_list() BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		node_type *it = head_;

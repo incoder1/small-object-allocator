@@ -38,14 +38,13 @@ struct page {
 #if !defined(BOOST_NO_CXX11_DELETED_FUNCTIONS)
       page( const page& ) = delete;
       page& operator=( const page& ) = delete;
-      ~page() = delete;
 #else
   private:  // emphasize the following members are private
       object( const object& );
       object& operator=( const object& );
 #endif // no deleted functions
 public:
-	static const uint8_t MAX_BLOCKS;
+	BOOST_STATIC_CONSTANT(uint8_t, MAX_BLOCKS  = UCHAR_MAX);
 
 	page(const uint8_t block_size, const uint8_t* begin) BOOST_NOEXCEPT_OR_NOTHROW;
 
@@ -60,14 +59,10 @@ public:
 	 * \param ptr pointer on allocated memory
 	 * \param bloc_size size of minimal allocated block
 	 */
-	inline void release(const uint8_t* ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
+	inline bool release(const uint8_t* ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
 
-	BOOST_FORCEINLINE bool is_empty() {
+    BOOST_FORCEINLINE bool is_empty() {
 		return free_blocks_ == MAX_BLOCKS;
-	}
-
-	BOOST_FORCEINLINE  bool in(const uint8_t *ptr) {
-        return ptr >= begin_ && ptr < end_;
 	}
 
 private:
@@ -75,6 +70,7 @@ private:
 	uint8_t free_blocks_;
 	const uint8_t* begin_;
 	const uint8_t* end_;
+	spin_lock mtx_;
 };
 
 /**
@@ -84,7 +80,7 @@ class fixed_allocator {
 BOOST_MOVABLE_BUT_NOT_COPYABLE(fixed_allocator)
 private:
 	/// Vector of memory block pages
-	typedef std::forward_list<page*> pages_list;
+	typedef lockfree::forward_list<page*> pages_list;
 public:
 	/// Constructs new fixed allocator of specific block size
 	explicit fixed_allocator(const std::size_t block_size);
@@ -96,7 +92,7 @@ public:
 	* Releases previesly allocated block of memory
 	* \param ptr pointer to the allocated memory
 	*/
-	bool free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr,const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
+	void free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr,const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
 private:
 	BOOST_FORCEINLINE page* create_new_page(std::size_t size) const;
 	BOOST_FORCEINLINE void release_page(page* const pg) const BOOST_NOEXCEPT_OR_NOTHROW;
@@ -104,22 +100,20 @@ private:
 	page* alloc_current_;
 	page* free_current_;
 	pages_list pages_;
-	spin_lock mtx_;
 };
 
 class pool
 {
 BOOST_MOVABLE_BUT_NOT_COPYABLE(pool)
-private:
-	typedef lockfree::forward_list<fixed_allocator*> fa_list;
 public:
-	explicit pool(const std::size_t block_size);
+	pool(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
 	~pool() BOOST_NOEXCEPT_OR_NOTHROW;
 	inline void *malloc BOOST_PREVENT_MACRO_SUBSTITUTION();
 	inline void free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW;
 private:
+	boost::atomic<fixed_allocator*> allocator_;
 	const std::size_t block_size_;
-	fa_list allocators_;
+	static spin_lock _mtx;
 };
 
 /**

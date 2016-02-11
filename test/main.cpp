@@ -41,14 +41,18 @@ MyObject::~MyObject() BOOST_NOEXCEPT_OR_NOTHROW {
 class MyWidget:public virtual MyObject {
 public:
 	MyWidget():
-		MyObject()
+		MyObject(),
+		a(0)
 	{
 	}
 	virtual void foo()
 	{
+        a++;
 	}
 	virtual ~MyWidget() BOOST_NOEXCEPT_OR_NOTHROW {
 	}
+private:
+        int a;
 };
 
 class MyButton:public MyWidget {
@@ -58,6 +62,7 @@ public:
 	{}
 	virtual void foo()
 	{
+        r_.l++;
 	}
 	virtual ~MyButton() BOOST_NOEXCEPT_OR_NOTHROW {
 	}
@@ -71,14 +76,18 @@ BOOST_DECLARE_OBJECT_PTR_T(MyButton);
 
 class Widget:public virtual boost::object {
 public:
-Widget() BOOST_NOEXCEPT_OR_NOTHROW:
-	boost::object()
-	{}
+ Widget() BOOST_NOEXCEPT_OR_NOTHROW:
+	boost::object(),
+	a(0)
+ {}
 	virtual void foo()
 	{
+        a++;
 	}
 	virtual ~Widget() BOOST_NOEXCEPT_OR_NOTHROW {
 	}
+private:
+        int a;
 };
 
 class Button:public Widget {
@@ -88,6 +97,7 @@ public:
 	{}
 	virtual void foo()
 	{
+        r_.l++;
 	}
 	virtual ~Button() BOOST_NOEXCEPT_OR_NOTHROW {
 	}
@@ -113,7 +123,7 @@ void test_routine()
 int main(int argc, const char** argv)
 {
 	std::vector<std::thread> workers;
-	for(int i=0; i < 32; i++) {
+	for(int i=0; i < 4; i++) {
 		workers.push_back( std::thread( std::bind( test_routine ) ) );
 	}
 	for (std::thread &t: workers) {

@@ -25,7 +25,10 @@ public:
 		std::size_t spin_count = 0;
 		while( !state_.exchange(LOCKED, boost::memory_order_acquire) )
 		{
-			boost::this_thread::interruptible_wait(++spin_count);
+            if(++spin_count == UCHAR_MAX) {
+                boost::thread::yield();
+                spin_count = 0;
+            }
 		}
 	}
 	BOOST_FORCEINLINE bool try_lock() BOOST_NOEXCEPT_OR_NOTHROW {
