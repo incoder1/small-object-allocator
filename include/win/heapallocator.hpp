@@ -32,7 +32,7 @@ private:
 		_instance.store(NULL, memory_order::memory_order_release);
 	}
 public:
-	static heap_allocator* const instance() {
+	static const heap_allocator* instance() {
 		heap_allocator* tmp = _instance.load(memory_order::memory_order_consume);
 		if (!tmp) {
 			boost::unique_lock<smallobject::spin_lock> lock(_mtx);
@@ -48,10 +48,10 @@ public:
 	{
 		::HeapDestroy(hHeap_);
 	}
-	BOOST_FORCEINLINE void* allocate(std::size_t bytes) {
+	BOOST_FORCEINLINE void* allocate(std::size_t bytes) const {
 		return ::HeapAlloc(hHeap_, 0, bytes);
 	}
-	BOOST_FORCEINLINE void release(void * const block) {
+	BOOST_FORCEINLINE void release(void * const block) const {
 		::HeapFree(hHeap_, 0, block);
 	}
 private:

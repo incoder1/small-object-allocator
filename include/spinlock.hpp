@@ -9,6 +9,10 @@
 #pragma once
 #endif // BOOST_HAS_PRAGMA_ONCE
 
+#ifndef _CRT_SPINCOUNT
+#	define	_CRT_SPINCOUNT 4000
+#endif
+
 namespace boost {
 
 namespace smallobject {
@@ -25,7 +29,7 @@ public:
 		std::size_t spin_count = 0;
 		while( !state_.exchange(LOCKED, boost::memory_order_acquire) )
 		{
-            if(++spin_count == UCHAR_MAX) {
+            if(++spin_count == _CRT_SPINCOUNT) {
                 boost::thread::yield();
                 spin_count = 0;
             }

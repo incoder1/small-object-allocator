@@ -17,9 +17,9 @@
 				<Compiler>
 					<Add option="-fexpensive-optimizations" />
 					<Add option="-O3" />
-					<Add option="-std=c++0x" />
 					<Add option="-Wextra" />
 					<Add option="-Wall" />
+					<Add option="-std=c++14" />
 					<Add option="-g" />
 					<Add option="-Og" />
 					<Add option="-fexceptions" />
@@ -36,16 +36,16 @@
 			<Target title="release-win-gcc-x64">
 				<Option platforms="Windows;" />
 				<Option output="bin/release-win-gcc-x64/small_object" prefix_auto="1" extension_auto="1" />
-				<Option working_dir="bin/release-win-gcc-x64" />
+				<Option working_dir="" />
 				<Option object_output="obj/release-win-gcc-x64/" />
-				<Option type="3" />
+				<Option type="2" />
 				<Option compiler="gcc" />
 				<Option createDefFile="1" />
 				<Compiler>
 					<Add option="-fexpensive-optimizations" />
 					<Add option="-O3" />
-					<Add option="-std=c++11" />
 					<Add option="-Wall" />
+					<Add option="-std=c++11" />
 					<Add option="-fno-exceptions" />
 					<Add option="-fno-rtti" />
 					<Add directory="include" />
@@ -53,7 +53,6 @@
 					<Add directory="include/win" />
 				</Compiler>
 				<Linker>
-					<Add option="-flto" />
 					<Add library="boost_system-mt.dll" />
 					<Add library="boost_thread-mt.dll" />
 					<Add library="boost_exception-mt" />
@@ -81,32 +80,6 @@
 					<Add option="-pg" />
 					<Add library="boost_system" />
 					<Add library="boost_thread" />
-				</Linker>
-			</Target>
-			<Target title=" release-win-gcc-x64-static">
-				<Option platforms="Windows;" />
-				<Option output="bin/ release-win-gcc-x64-static/small_object" prefix_auto="1" extension_auto="1" />
-				<Option working_dir="" />
-				<Option object_output="obj/release-win-gcc-x64-static/" />
-				<Option type="2" />
-				<Option compiler="gcc" />
-				<Option createDefFile="1" />
-				<Compiler>
-					<Add option="-fexpensive-optimizations" />
-					<Add option="-O3" />
-					<Add option="-Wall" />
-					<Add option="-std=c++14" />
-					<Add option="-fno-exceptions" />
-					<Add option="-fno-rtti" />
-					<Add directory="include" />
-					<Add directory="D:/cpp/boost_1_60_0" />
-					<Add directory="include/win" />
-				</Compiler>
-				<Linker>
-					<Add library="boost_system-mt.dll" />
-					<Add library="boost_thread-mt.dll" />
-					<Add library="boost_exception-mt" />
-					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
 				</Linker>
 			</Target>
 			<Target title="release-gcc-unix-amd64">
@@ -162,13 +135,11 @@
 		<Unit filename="include/win/heapallocator.hpp">
 			<Option target="debug-win-gcc-x64" />
 			<Option target="release-win-gcc-x64" />
-			<Option target=" release-win-gcc-x64-static" />
 		</Unit>
 		<Unit filename="src/object.cpp" />
 		<Unit filename="src/win/heapallocator.cpp">
 			<Option target="debug-win-gcc-x64" />
 			<Option target="release-win-gcc-x64" />
-			<Option target=" release-win-gcc-x64-static" />
 		</Unit>
 		<Extensions>
 			<code_completion />

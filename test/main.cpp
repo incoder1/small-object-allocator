@@ -114,6 +114,9 @@ void test_routine()
 	for(int i=0; i < 250000; i++) {
 		s_Widget wd(new Widget());
 		wd->foo();
+		std::vector<std::size_t> v;
+		v.reserve(1024);
+		v.reserve(2048);
 		s_Button btn(new Button());
 		btn->foo();
 	}
@@ -123,7 +126,7 @@ void test_routine()
 int main(int argc, const char** argv)
 {
 	std::vector<std::thread> workers;
-	for(int i=0; i < 4; i++) {
+	for(int i=0; i < 32; i++) {
 		workers.push_back( std::thread( std::bind( test_routine ) ) );
 	}
 	for (std::thread &t: workers) {

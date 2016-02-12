@@ -3,7 +3,6 @@
 
 #include <cstddef>
 #include <new>
-#include <forward_list>
 
 #include "nb_forward_list.hpp"
 #include "spinlock.hpp"
@@ -11,6 +10,7 @@
 
 #include <boost/intrusive_ptr.hpp>
 #include <boost/exception/exception.hpp>
+#include <boost/thread/tss.hpp>
 
 #ifndef BOOST_THROWS
 #	ifdef BOOST_NO_CXX11_NOEXCEPT
@@ -53,13 +53,13 @@ public:
 	 * \param block_size size of minimal memory block, must be the same for the whole page
 	 * \param blocks count of blocks to be allocated in time
 	 */
-	inline uint8_t* allocate(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
+	BOOST_FORCEINLINE uint8_t* allocate(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
 	/**
 	 * Releases previusly allocated memory if pointer is from this page
 	 * \param ptr pointer on allocated memory
 	 * \param bloc_size size of minimal allocated block
 	 */
-	inline bool release(const uint8_t* ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
+	BOOST_FORCEINLINE bool release(const uint8_t* ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
 
     BOOST_FORCEINLINE bool is_empty() {
 		return free_blocks_ == MAX_BLOCKS;
@@ -81,24 +81,35 @@ BOOST_MOVABLE_BUT_NOT_COPYABLE(fixed_allocator)
 private:
 	/// Vector of memory block pages
 	typedef lockfree::forward_list<page*> pages_list;
+	typedef boost::atomic<page*> local_ptr;
 public:
 	/// Constructs new fixed allocator of specific block size
 	explicit fixed_allocator(const std::size_t block_size);
 	/// releases allocator and all allocated memory
 	~fixed_allocator() BOOST_NOEXCEPT_OR_NOTHROW;
 	/// Allocates a single memory block of fixed size
-	void* malloc BOOST_PREVENT_MACRO_SUBSTITUTION(std::size_t size) BOOST_THROWS(std::bad_alloc);
+	inline void* malloc BOOST_PREVENT_MACRO_SUBSTITUTION(std::size_t size) BOOST_THROWS(std::bad_alloc);
 	/**
 	* Releases previesly allocated block of memory
 	* \param ptr pointer to the allocated memory
 	*/
-	void free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr,const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
+	inline void free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr,const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
+#ifdef BOOST_WINDOWS
+	static void* operator new(const std::size_t size) BOOST_THROWS(std::bad_alloc)
+	{
+		return sys::xmalloc(size);
+	}
+	static void operator delete(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW
+	{
+		sys::xfree(ptr);
+	}
+#endif // BOOST_WINDOWS
 private:
 	BOOST_FORCEINLINE page* create_new_page(std::size_t size) const;
 	BOOST_FORCEINLINE void release_page(page* const pg) const BOOST_NOEXCEPT_OR_NOTHROW;
 private:
-	page* alloc_current_;
-	page* free_current_;
+	local_ptr alloc_current_;
+	local_ptr free_current_;
 	pages_list pages_;
 };
 
@@ -108,8 +119,10 @@ BOOST_MOVABLE_BUT_NOT_COPYABLE(pool)
 public:
 	pool(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
 	~pool() BOOST_NOEXCEPT_OR_NOTHROW;
-	inline void *malloc BOOST_PREVENT_MACRO_SUBSTITUTION();
-	inline void free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW;
+	BOOST_FORCEINLINE void *malloc BOOST_PREVENT_MACRO_SUBSTITUTION();
+	BOOST_FORCEINLINE void free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW;
+private:
+	fixed_allocator* get_allocator();
 private:
 	boost::atomic<fixed_allocator*> allocator_;
 	const std::size_t block_size_;
@@ -125,18 +138,18 @@ class object_allocator:private boost::noncopyable
 private:
 	typedef pool pool_t;
 public:
-	static object_allocator* const instance();
-	BOOST_FORCEINLINE void* malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size);
-	BOOST_FORCEINLINE void free BOOST_PREVENT_MACRO_SUBSTITUTION(void *ptr, const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
+	static const object_allocator* instance();
+	BOOST_FORCEINLINE void* malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size) const;
+	BOOST_FORCEINLINE void free BOOST_PREVENT_MACRO_SUBSTITUTION(void *ptr, const std::size_t size) const BOOST_NOEXCEPT_OR_NOTHROW;
 	~object_allocator() BOOST_NOEXCEPT_OR_NOTHROW;
 private:
 	explicit object_allocator();
 	void collect_free_memory() const;
-	pool_t* get(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
+	pool_t* get(const std::size_t size) const BOOST_NOEXCEPT_OR_NOTHROW;
 	static void release() BOOST_NOEXCEPT_OR_NOTHROW;
 private:
 	static spin_lock _smtx;
-	static boost::atomic<object_allocator*> volatile _instance;
+	static boost::atomic<object_allocator*> _instance;
 	pool_t* pools_;
 };
 
@@ -160,7 +173,7 @@ public:
 	void* operator new(std::size_t bytes) BOOST_THROWS(std::bad_alloc);
 	void operator delete(void *ptr,std::size_t bytes) BOOST_NOEXCEPT_OR_NOTHROW;
 private:
-	// ass support for boost::intrusive_ptr
+	// support for boost::intrusive_ptr
 	boost::atomics::atomic_size_t ref_count_;
 	friend void intrusive_ptr_add_ref(object* const obj);
 	friend void intrusive_ptr_release(object* const obj);

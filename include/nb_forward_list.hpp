@@ -343,8 +343,9 @@ public:
 		return iterator( head_->next() );
 	}
 
-	iterator end() BOOST_NOEXCEPT_OR_NOTHROW {
-		return iterator( NULL );
+	iterator& end() BOOST_NOEXCEPT_OR_NOTHROW {
+		static iterator _end( NULL );
+		return _end;
 	}
 
 	const_iterator cbegin() const BOOST_NOEXCEPT_OR_NOTHROW
@@ -357,9 +358,10 @@ public:
 		return const_iterator(head_);
 	}
 
-	const_iterator cend() const BOOST_NOEXCEPT_OR_NOTHROW
+	const_iterator& cend() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		return const_iterator(NULL);
+		static const_iterator _end(NULL);
+		return _end;
 	}
 
 	inline std::size_t size() const BOOST_NOEXCEPT_OR_NOTHROW
