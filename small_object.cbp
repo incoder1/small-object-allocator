@@ -9,17 +9,15 @@
 			<Target title="debug-win-gcc-x64">
 				<Option platforms="Windows;" />
 				<Option output="bin/debug-win-gcc-x64/small_object" prefix_auto="1" extension_auto="1" />
-				<Option working_dir="bin/debug-win-gcc-x64" />
+				<Option working_dir="" />
 				<Option object_output="obj/relase-win-gcc-x64/" />
-				<Option type="3" />
+				<Option type="2" />
 				<Option compiler="gcc" />
 				<Option createDefFile="1" />
 				<Compiler>
-					<Add option="-fexpensive-optimizations" />
-					<Add option="-O3" />
 					<Add option="-Wextra" />
 					<Add option="-Wall" />
-					<Add option="-std=c++14" />
+					<Add option="-std=c++11" />
 					<Add option="-g" />
 					<Add option="-Og" />
 					<Add option="-fexceptions" />
@@ -43,7 +41,7 @@
 				<Option createDefFile="1" />
 				<Compiler>
 					<Add option="-fexpensive-optimizations" />
-					<Add option="-O3" />
+					<Add option="-Os" />
 					<Add option="-Wall" />
 					<Add option="-std=c++11" />
 					<Add option="-fno-exceptions" />
@@ -55,7 +53,6 @@
 				<Linker>
 					<Add library="boost_system-mt.dll" />
 					<Add library="boost_thread-mt.dll" />
-					<Add library="boost_exception-mt" />
 					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
 				</Linker>
 			</Target>
@@ -92,7 +89,7 @@
 				<Option createDefFile="1" />
 				<Compiler>
 					<Add option="-fexpensive-optimizations" />
-					<Add option="-O3" />
+					<Add option="-Os" />
 					<Add option="-Wextra" />
 					<Add option="-Wall" />
 					<Add option="-fno-exceptions" />
@@ -115,7 +112,7 @@
 				<Option createDefFile="1" />
 				<Option projectCompilerOptionsRelation="1" />
 				<Compiler>
-					<Add option="-O3" />
+					<Add option="-Os" />
 					<Add option="-std=c++14" />
 					<Add option="-emit-llvm" />
 					<Add option="-fno-exceptions" />

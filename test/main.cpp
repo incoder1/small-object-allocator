@@ -4,6 +4,7 @@
 #include <boost/noncopyable.hpp>
 #include <thread>
 #include <vector>
+#include <chrono>
 
 struct rect {
 	int l,t,r,b;
@@ -109,15 +110,22 @@ BOOST_DECLARE_OBJECT_PTR_T(Widget);
 BOOST_DECLARE_OBJECT_PTR_T(Button);
 
 
-void test_routine()
+void test_smal_routine()
 {
 	for(int i=0; i < 250000; i++) {
 		s_Widget wd(new Widget());
 		wd->foo();
-		std::vector<std::size_t> v;
-		v.reserve(1024);
-		v.reserve(2048);
 		s_Button btn(new Button());
+		btn->foo();
+	}
+}
+
+void test_clib_routine()
+{
+	for(int i=0; i < 250000; i++) {
+		s_MyWidget wd(new MyWidget());
+		wd->foo();
+		s_MyButton btn(new MyButton());
 		btn->foo();
 	}
 }
@@ -125,14 +133,35 @@ void test_routine()
 
 int main(int argc, const char** argv)
 {
+	{
+	auto start = std::chrono::steady_clock::now();
 	std::vector<std::thread> workers;
 	for(int i=0; i < 32; i++) {
-		workers.push_back( std::thread( std::bind( test_routine ) ) );
+		workers.push_back( std::thread( std::bind( test_clib_routine ) ) );
 	}
 	for (std::thread &t: workers) {
       if (t.joinable()) {
         t.join();
       }
     }
+    auto end = std::chrono::steady_clock::now();
+    auto diff = end - start;
+    std::cout << std::chrono::duration <double, std::milli> (diff).count() << " ms" << std::endl;
+	}
+
+    auto start = std::chrono::steady_clock::now();
+	std::vector<std::thread> workers;
+	for(int i=0; i < 32; i++) {
+		workers.push_back( std::thread( std::bind( test_smal_routine ) ) );
+	}
+	for (std::thread &t: workers) {
+      if (t.joinable()) {
+        t.join();
+      }
+    }
+	auto end = std::chrono::steady_clock::now();
+    auto diff = end - start;
+    std::cout << std::chrono::duration <double, std::milli> (diff).count() << " ms" << std::endl;
+
 	return 0;
 }

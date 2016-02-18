@@ -1,8 +1,9 @@
 #ifndef __BOOST_SMALLOBJECT_FORWARD_LIST__
 #define __BOOST_SMALLOBJECT_FORWARD_LIST__
 
-#include <iterator>
+#include "spinlock.hpp"
 
+#include <iterator>
 #include <boost/atomic.hpp>
 #include <boost/move/move.hpp>
 #include <boost/pool/pool.hpp>
@@ -258,7 +259,7 @@ public:
 
 	iterator insert_after(const_iterator position, BOOST_RV_REF(E) e)
 	{
-		node_type* new_next = new ( node_allocator_.malloc() ) node_type(forward<E>(e));
+		node_type* new_next = create_node( forward<E>(e) );
 		node_type *pos = position.node();
 		node_type *old_next;
 		do {
@@ -303,7 +304,7 @@ public:
 				new_next = to_remove->next();
 			} while(! pos->exchange_next(new_next) );
 			to_remove->~node_type();
-			node_allocator_.free( to_remove );
+			release_node( to_remove );
 		}
         return iterator(new_next);
 	}
@@ -377,6 +378,17 @@ public:
 	}
 
 private:
+	BOOST_FORCEINLINE node_type* create_node(BOOST_RV_REF(E) e) {
+		boost::unique_lock<boost::smallobject::spin_lock> lk(mtx_);
+		node_type *result = new ( node_allocator_.malloc() ) node_type(forward<E>(e));
+		return result;
+	}
+	BOOST_FORCEINLINE void release_node(node_type* const n) {
+		boost::unique_lock<boost::smallobject::spin_lock> lk(mtx_);
+		node_allocator_.free(n);
+	}
+private:
+	boost::smallobject::spin_lock mtx_;
 	node_type* head_;
 	node_allocator node_allocator_;
 };

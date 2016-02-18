@@ -34,36 +34,32 @@ using smallobject::spin_lock;
 /**
  * ! \brief A chunk of allocated memory divided on UCHAR_MAX of fixed blocks
  */
-struct page {
+struct chunk {
 #if !defined(BOOST_NO_CXX11_DELETED_FUNCTIONS)
-      page( const page& ) = delete;
-      page& operator=( const page& ) = delete;
+      chunk( const chunk& ) = delete;
+      chunk& operator=( const chunk& ) = delete;
 #else
   private:  // emphasize the following members are private
-      object( const object& );
-      object& operator=( const object& );
+      chunk( const chunk& );
+      chunk& operator=( const chunk& );
 #endif // no deleted functions
 public:
 	BOOST_STATIC_CONSTANT(uint8_t, MAX_BLOCKS  = UCHAR_MAX);
 
-	page(const uint8_t block_size, const uint8_t* begin) BOOST_NOEXCEPT_OR_NOTHROW;
+	chunk(const uint8_t block_size, const uint8_t* begin) BOOST_NOEXCEPT_OR_NOTHROW;
 
 	/**
 	 * Allocates memory blocks
-	 * \param block_size size of minimal memory block, must be the same for the whole page
+	 * \param block_size size of minimal memory block, must be the same for the whole chunk
 	 * \param blocks count of blocks to be allocated in time
 	 */
 	BOOST_FORCEINLINE uint8_t* allocate(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
 	/**
-	 * Releases previusly allocated memory if pointer is from this page
+	 * Releases previusly allocated memory if pointer is from this chunk
 	 * \param ptr pointer on allocated memory
 	 * \param bloc_size size of minimal allocated block
 	 */
 	BOOST_FORCEINLINE bool release(const uint8_t* ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
-
-    BOOST_FORCEINLINE bool is_empty() {
-		return free_blocks_ == MAX_BLOCKS;
-	}
 
 private:
 	uint8_t position_;
@@ -76,17 +72,19 @@ private:
 /**
  * \brief Allocates only a signle memory block of the same size
  */
-class fixed_allocator {
-BOOST_MOVABLE_BUT_NOT_COPYABLE(fixed_allocator)
+class arena {
+BOOST_MOVABLE_BUT_NOT_COPYABLE(arena)
 private:
-	/// Vector of memory block pages
-	typedef lockfree::forward_list<page*> pages_list;
-	typedef boost::atomic<page*> local_ptr;
+	/// Vector of memory block chunks
+	typedef lockfree::forward_list<chunk*> chunks_list;
+	typedef boost::thread_specific_ptr<chunk> local_ptr;
+	static inline void no_free_f(chunk* cnk)
+	{}
 public:
-	/// Constructs new fixed allocator of specific block size
-	explicit fixed_allocator(const std::size_t block_size);
+	/// Constructs new arena of specific block size
+	explicit arena();
 	/// releases allocator and all allocated memory
-	~fixed_allocator() BOOST_NOEXCEPT_OR_NOTHROW;
+	~arena() BOOST_NOEXCEPT_OR_NOTHROW;
 	/// Allocates a single memory block of fixed size
 	inline void* malloc BOOST_PREVENT_MACRO_SUBSTITUTION(std::size_t size) BOOST_THROWS(std::bad_alloc);
 	/**
@@ -105,12 +103,12 @@ public:
 	}
 #endif // BOOST_WINDOWS
 private:
-	BOOST_FORCEINLINE page* create_new_page(std::size_t size) const;
-	BOOST_FORCEINLINE void release_page(page* const pg) const BOOST_NOEXCEPT_OR_NOTHROW;
+	BOOST_FORCEINLINE chunk* create_new_chunk(std::size_t size) const;
+	BOOST_FORCEINLINE void release_chunk(chunk* const cnk) const BOOST_NOEXCEPT_OR_NOTHROW;
 private:
 	local_ptr alloc_current_;
 	local_ptr free_current_;
-	pages_list pages_;
+	chunks_list chunks_;
 };
 
 class pool
@@ -122,9 +120,9 @@ public:
 	BOOST_FORCEINLINE void *malloc BOOST_PREVENT_MACRO_SUBSTITUTION();
 	BOOST_FORCEINLINE void free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW;
 private:
-	fixed_allocator* get_allocator();
+	arena* get_allocator();
 private:
-	boost::atomic<fixed_allocator*> allocator_;
+	boost::atomic<arena*> allocator_;
 	const std::size_t block_size_;
 	static spin_lock _mtx;
 };

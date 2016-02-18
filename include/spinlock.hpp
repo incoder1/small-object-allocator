@@ -26,7 +26,7 @@ public:
 	{}
 	inline void lock() BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		std::size_t spin_count = 0;
+		register std::size_t spin_count = 0;
 		while( !state_.exchange(LOCKED, boost::memory_order_acquire) )
 		{
             if(++spin_count == _CRT_SPINCOUNT) {

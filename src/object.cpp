@@ -23,13 +23,13 @@ const std::size_t MAX_SIZE = sizeof(std::size_t) * 16;
 namespace detail {
 
 
-page::page(const uint8_t block_size, const uint8_t* begin) BOOST_NOEXCEPT_OR_NOTHROW:
+chunk::chunk(const uint8_t block_size, const uint8_t* begin) BOOST_NOEXCEPT_OR_NOTHROW:
 	position_(0),
 	free_blocks_(MAX_BLOCKS),
 	begin_( begin ),
 	end_(begin + (MAX_BLOCKS * block_size) )
 {
-	uint8_t i = 0;
+	register uint8_t i = 0;
 	uint8_t* p = const_cast<uint8_t*>(begin_);
 	while( i < MAX_BLOCKS) {
 		*p = ++i;
@@ -37,7 +37,7 @@ page::page(const uint8_t block_size, const uint8_t* begin) BOOST_NOEXCEPT_OR_NOT
 	}
 }
 
-BOOST_FORCEINLINE uint8_t* page::allocate(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW {
+BOOST_FORCEINLINE uint8_t* chunk::allocate(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW {
 	uint8_t *result = NULL;
 	if(free_blocks_)
 	{
@@ -51,7 +51,7 @@ BOOST_FORCEINLINE uint8_t* page::allocate(const std::size_t block_size) BOOST_NO
 	return result;
 }
 
-BOOST_FORCEINLINE bool page::release(const uint8_t *ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
+BOOST_FORCEINLINE bool chunk::release(const uint8_t *ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
 {
     if( ptr >= begin_ && ptr < end_ ) {
         assert( (ptr - begin_) % block_size == 0 );
@@ -64,96 +64,86 @@ BOOST_FORCEINLINE bool page::release(const uint8_t *ptr,const std::size_t block_
     return false;
 }
 
-//fixed_allocator
-fixed_allocator::fixed_allocator(const std::size_t block_size):
-	alloc_current_(NULL),
-	free_current_(NULL)
+//arena
+arena::arena():
+	alloc_current_(arena::no_free_f ),
+	free_current_(arena::no_free_f)
 {
-	unsigned cpus = boost::thread::hardware_concurrency();
-	// pre cache pages for all cpus
-	page* pg = NULL;
-	for(unsigned i=0; i < cpus; i++) {
-		pg = create_new_page(block_size);
-		pages_.push_front(pg);
-	}
-	alloc_current_.store(pg, boost::memory_order_relaxed);
-	free_current_.store(pg, boost::memory_order_relaxed);
 }
 
-BOOST_FORCEINLINE page* fixed_allocator::create_new_page(const std::size_t size) const
+BOOST_FORCEINLINE chunk* arena::create_new_chunk(const std::size_t size) const
 {
-	register void *ptr = sys::xmalloc( sizeof(page) + (size * page::MAX_BLOCKS) );
-	const uint8_t *begin = static_cast<uint8_t*>(ptr) + sizeof(page);
-	return new (ptr) page(size, begin);
+	register void *ptr = sys::xmalloc( sizeof(chunk) + (size * chunk::MAX_BLOCKS) );
+	const uint8_t *begin = static_cast<uint8_t*>(ptr) + sizeof(chunk);
+	return new (ptr) chunk(size, begin);
 }
 
-BOOST_FORCEINLINE void fixed_allocator::release_page(page* const pg) const BOOST_NOEXCEPT_OR_NOTHROW
+BOOST_FORCEINLINE void arena::release_chunk(chunk* const cnk) const BOOST_NOEXCEPT_OR_NOTHROW
 {
-	assert(pg);
-	pg->~page();
-	sys::xfree( static_cast<void*>(pg) );
+	assert(cnk);
+	cnk->~chunk();
+	sys::xfree( static_cast<void*>(cnk) );
 }
 
-fixed_allocator::~fixed_allocator() BOOST_NOEXCEPT_OR_NOTHROW
+arena::~arena() BOOST_NOEXCEPT_OR_NOTHROW
 {
-	pages_list::iterator it = pages_.begin();
-	pages_list::iterator end = pages_.end();
+	chunks_list::iterator it = chunks_.begin();
+	chunks_list::iterator end = chunks_.end();
 	while(it != end)
 	{
-		release_page(*it);
+		release_chunk(*it);
 		++it;
 	}
 }
 
-inline void* fixed_allocator::malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size) BOOST_THROWS(std::bad_alloc)
+inline void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size) BOOST_THROWS(std::bad_alloc)
 {
-	uint8_t *result = NULL;
-	page *pg = alloc_current_.load(boost::memory_order_seq_cst);
-	result = pg->allocate(size);
+	chunk* cnk = alloc_current_.get();
+	uint8_t *result = cnk ? cnk->allocate(size) :  NULL;
 	if(!result) {
-		pages_list::const_iterator it = pages_.cbegin();
-		pages_list::const_iterator end = pages_.cend();
-		// if previws failed, try to allocate from an exising page
+		chunks_list::const_iterator it = chunks_.cbegin();
+		chunks_list::const_iterator end = chunks_.cend();
+		// if previws failed, try to allocate from an exising chunk
 		while(it != end) {
-			pg = (*it);
-			result = pg->allocate(size);
+			cnk = (*it);
+			result = cnk->allocate(size);
 			if(result) {
 				break;
 			}
 			++it;
 		}
 		if(result) {
-			alloc_current_.store(pg, boost::memory_order_seq_cst);
+			alloc_current_.reset(cnk);
 		}
 	}
 	if(!result) {
-        // no space left, or all memory pages were locked by another threads
-		pg =  create_new_page(size);
-		result = pg->allocate(size);
-		pages_.push_front( pg );
-		alloc_current_.store(pg, boost::memory_order_seq_cst);
-		free_current_.store(pg, boost::memory_order_seq_cst);
+        // no space left, or all memory chunks were locked by another threads
+		cnk =  create_new_chunk(size);
+		result = cnk->allocate(size);
+		chunks_.push_front( cnk );
+		alloc_current_.reset(cnk);
+		free_current_.reset(cnk);
 	}
 	return static_cast<void*>(result);
 }
 
-inline void fixed_allocator::free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr,const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW {
+inline void arena::free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr,const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW {
 	const uint8_t *p = static_cast<const uint8_t*>(ptr);
-	page *pg = free_current_.load(boost::memory_order_seq_cst);
-	if( pg  && !pg->release(p,size) ) {
-		pages_list::const_iterator it = pages_.cbegin();
-		pages_list::const_iterator end = pages_.cend();
+	chunk *cnk = free_current_.get();
+	if( cnk && !cnk->release(p,size) ) {
+		chunks_list::const_iterator it = chunks_.cbegin();
+		chunks_list::const_iterator end = chunks_.cend();
 		while(true) {
-            pg = *it;
-			if ( pg->release(p,size) ) {
+            cnk = *it;
+			if ( cnk->release(p,size) ) {
                 break;
 			}
             if(++it == end) {
                 boost::this_thread::yield();
-                it = pages_.cbegin();
+                it = chunks_.cbegin();
 			}
 		}
-		free_current_.store(pg, boost::memory_order_seq_cst);
+		free_current_.reset(cnk);
 	}
 }
 
@@ -173,14 +163,14 @@ pool::~pool() BOOST_NOEXCEPT_OR_NOTHROW
    }
 }
 
-fixed_allocator* pool::get_allocator()
+arena* pool::get_allocator()
 {
-    register fixed_allocator *result = allocator_.load(boost::memory_order_consume);
+    arena *result = allocator_.load(boost::memory_order_consume);
     if(!result) {
         boost::unique_lock<spin_lock> lock(_mtx);
         result = allocator_.load(boost::memory_order_acquire);
         if(!result) {
-            result = new fixed_allocator(block_size_);
+            result = new arena();
             allocator_.store(result, boost::memory_order_release);
         }
     }
@@ -195,7 +185,7 @@ BOOST_FORCEINLINE void *pool::malloc BOOST_PREVENT_MACRO_SUBSTITUTION()
 
 BOOST_FORCEINLINE void pool::free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW
 {
-    fixed_allocator *all = allocator_.load(boost::memory_order_relaxed);
+    arena *all = allocator_.load(boost::memory_order_relaxed);
     all->free(ptr, block_size_);
 }
 
