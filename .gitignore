@@ -1,6 +1,6 @@
-/obj
-/bin
-/tmp
+*/**/obj
+*/**/bin
+*/**/tmp
 **.save
 **.o
 **.obj
