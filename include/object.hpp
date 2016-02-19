@@ -61,6 +61,21 @@ public:
 	 */
 	BOOST_FORCEINLINE bool release(const uint8_t* ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
 
+	BOOST_FORCEINLINE bool empty() BOOST_NOEXCEPT_OR_NOTHROW
+	{
+		return MAX_BLOCKS == free_blocks_;
+	}
+
+	BOOST_FORCEINLINE bool try_lock() BOOST_NOEXCEPT
+	{
+		return mtx_.try_lock();
+	}
+
+	BOOST_FORCEINLINE void unlock() BOOST_NOEXCEPT
+	{
+		mtx_.unlock();
+	}
+
 private:
 	uint8_t position_;
 	uint8_t free_blocks_;
@@ -78,11 +93,11 @@ private:
 	/// Vector of memory block chunks
 	typedef lockfree::forward_list<chunk*> chunks_list;
 	typedef boost::thread_specific_ptr<chunk> local_ptr;
-	static inline void no_free_f(chunk* cnk)
+	static BOOST_FORCEINLINE void no_free_f(chunk* cnk)
 	{}
 public:
 	/// Constructs new arena of specific block size
-	explicit arena();
+	explicit arena(const std::size_t size);
 	/// releases allocator and all allocated memory
 	~arena() BOOST_NOEXCEPT_OR_NOTHROW;
 	/// Allocates a single memory block of fixed size
@@ -109,6 +124,7 @@ private:
 	local_ptr alloc_current_;
 	local_ptr free_current_;
 	chunks_list chunks_;
+	static const unsigned int CPUS;
 };
 
 class pool
@@ -120,9 +136,9 @@ public:
 	BOOST_FORCEINLINE void *malloc BOOST_PREVENT_MACRO_SUBSTITUTION();
 	BOOST_FORCEINLINE void free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW;
 private:
-	arena* get_allocator();
+	inline arena* get_arena();
 private:
-	boost::atomic<arena*> allocator_;
+	boost::atomic<arena*> arena_;
 	const std::size_t block_size_;
 	static spin_lock _mtx;
 };
@@ -140,10 +156,19 @@ public:
 	BOOST_FORCEINLINE void* malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size) const;
 	BOOST_FORCEINLINE void free BOOST_PREVENT_MACRO_SUBSTITUTION(void *ptr, const std::size_t size) const BOOST_NOEXCEPT_OR_NOTHROW;
 	~object_allocator() BOOST_NOEXCEPT_OR_NOTHROW;
+#ifdef BOOST_WINDOWS
+	static void* operator new(const std::size_t size) BOOST_THROWS(std::bad_alloc)
+	{
+		return sys::xmalloc(size);
+	}
+	static void operator delete(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW
+	{
+		sys::xfree(ptr);
+	}
+#endif // BOOST_WINDOWS
 private:
 	explicit object_allocator();
-	void collect_free_memory() const;
-	pool_t* get(const std::size_t size) const BOOST_NOEXCEPT_OR_NOTHROW;
+	BOOST_FORCEINLINE pool_t* get(const std::size_t size) const BOOST_NOEXCEPT_OR_NOTHROW;
 	static void release() BOOST_NOEXCEPT_OR_NOTHROW;
 private:
 	static spin_lock _smtx;
@@ -194,6 +219,8 @@ BOOST_FORCEINLINE void intrusive_ptr_release(object* const obj)
 } // namespace smallobject
 
 using smallobject::object;
+
+typedef boost::intrusive_ptr<smallobject::object> s_object;
 
 #ifndef BOOST_DECLARE_OBJECT_PTR_T
 #	define BOOST_DECLARE_OBJECT_PTR_T(TYPE) typedef boost::intrusive_ptr<TYPE> s_##TYPE

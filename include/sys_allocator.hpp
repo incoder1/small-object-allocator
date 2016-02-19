@@ -12,10 +12,8 @@ namespace boost { namespace smallobject { namespace sys {
 
 BOOST_FORCEINLINE void* xmalloc(std::size_t size)
 {
-    void *result;
-	if( ::posix_memalign(&result, ::sysconf(_SC_PAGESIZE), size) ) {
-        boost::throw_exception(std::bad_alloc());
-	}
+    void *result = NULL;
+	::posix_memalign(&result, ::sysconf(_SC_PAGESIZE), size);
 	return result;
 }
 
