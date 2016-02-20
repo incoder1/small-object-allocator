@@ -54,7 +54,6 @@ BOOST_FORCEINLINE uint8_t* chunk::allocate(const std::size_t block_size) BOOST_N
 BOOST_FORCEINLINE bool chunk::release(const uint8_t *ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
 {
     if( ptr >= begin_ && ptr < end_ ) {
-        assert( (ptr - begin_) % block_size == 0 );
         boost::unique_lock<spin_lock> lock(mtx_);
         *(const_cast<uint8_t*>(ptr)) = position_;
         position_ =  static_cast<uint8_t>( (ptr - begin_) / block_size );

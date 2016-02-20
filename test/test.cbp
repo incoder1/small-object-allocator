@@ -13,9 +13,9 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
+					<Add option="-std=c++11" />
 					<Add option="-Wextra" />
 					<Add option="-Wall" />
-					<Add option="-std=c++11" />
 					<Add option="-pg" />
 					<Add option="-g" />
 					<Add option="-Og" />
@@ -24,8 +24,8 @@
 					<Add directory="include" />
 				</Compiler>
 				<Linker>
-					<Add option="-pg -lgmon" />
 					<Add option="-pg" />
+					<Add option="-pg -lgmon" />
 					<Add library="boost_system-mt-d.dll" />
 					<Add library="boost_thread-mt-d.dll" />
 					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
@@ -45,10 +45,12 @@
 					<Add option="-std=c++11" />
 					<Add option="-fno-exceptions" />
 					<Add option="-fno-rtti" />
+					<Add option="-flto" />
 					<Add directory="D:/cpp/boost_1_60_0" />
 					<Add directory="include" />
 				</Compiler>
 				<Linker>
+					<Add option="-flto" />
 					<Add library="boost_system-mt.dll" />
 					<Add library="boost_thread-mt.dll" />
 					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
@@ -84,6 +86,7 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-fexpensive-optimizations" />
+					<Add option="-Os" />
 					<Add option="-std=gnu++14" />
 					<Add option="-fno-exceptions" />
 					<Add option="-fno-rtti" />

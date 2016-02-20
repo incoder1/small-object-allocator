@@ -44,8 +44,8 @@
 				<Compiler>
 					<Add option="-march=corei7" />
 					<Add option="-O3" />
-					<Add option="-Wall" />
 					<Add option="-std=c++11" />
+					<Add option="-Wall" />
 					<Add option="-fno-exceptions" />
 					<Add option="-fno-rtti" />
 					<Add directory="include" />
@@ -90,6 +90,7 @@
 				<Option compiler="gcc" />
 				<Option createDefFile="1" />
 				<Compiler>
+					<Add option="-march=corei7" />
 					<Add option="-fexpensive-optimizations" />
 					<Add option="-Os" />
 					<Add option="-Wextra" />
@@ -102,6 +103,7 @@
 				<Linker>
 					<Add library="boost_system" />
 					<Add library="boost_thread" />
+					<Add library="jemalloc" />
 				</Linker>
 			</Target>
 			<Target title="release-clang-unix-amd64">
