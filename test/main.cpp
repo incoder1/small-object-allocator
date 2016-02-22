@@ -111,7 +111,7 @@ BOOST_DECLARE_OBJECT_PTR_T(Panel);
 BOOST_DECLARE_OBJECT_PTR_T(Button);
 
 static const int THREADS = std::thread::hardware_concurrency() * 2;
-static const int OBJECTS_COUNT = 87390; // ~10mb for 64 bit
+static const int OBJECTS_COUNT = 250000;
 static const int TESTS_COUNT = 64;
 
 void so_routine()
@@ -183,6 +183,13 @@ void print_benchmarks_result(const char* type,double libc_total, double so_total
 	}
 }
 
+void memory_cache_make() {
+	std::size_t caches = (sizeof(Widget)*2)+sizeof(Button)+sizeof(Panel) * OBJECTS_COUNT;
+	void *dummy = std::malloc( caches );
+	*(int*)dummy = 0xFF;
+	::std::free(dummy);
+}
+
 int main(int argc, const char** argv)
 {
 	std::cout<<"Banchmarks testing objects:"<<std::endl;
@@ -191,21 +198,20 @@ int main(int argc, const char** argv)
 	std::cout<<"Button: " << sizeof(Button) <<"    MyButton: " << sizeof(MyButton) <<" bytes" << std::endl;
 	std::cout<<"Panel:  " <<  sizeof(Panel) <<"    MyPanel : " << sizeof(MyPanel) <<" bytes" << std::endl << std::endl;
 
-	// macke OS cache bofere testing
-	// alloc and free 5 mb
-	void *dummy = std::malloc(5242880);
-	::std::free(dummy);
 
 	// Single thread benchmark
 	std::cout<<"Single threading benchmark"<<std::endl;
+	memory_cache_make();
 	double libc_total = run_benchmarks(single_thread_benchmark, libc_routine);
+	memory_cache_make();
 	double so_total = run_benchmarks(single_thread_benchmark, so_routine);
-	print_benchmarks_result("single", libc_total, so_total);
 
+	print_benchmarks_result("single", libc_total, so_total);
 	std::cout<<std::endl<<"Multi threading with " << THREADS << " threads benchmark"<<std::endl;
+	memory_cache_make();
 	libc_total = run_benchmarks(multi_threads_benchmark, libc_routine);
+	memory_cache_make();
 	so_total = run_benchmarks(multi_threads_benchmark, so_routine);
 	print_benchmarks_result("multi", libc_total, so_total);
-
 	return 0;
 }
