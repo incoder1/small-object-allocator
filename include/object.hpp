@@ -66,14 +66,24 @@ public:
 		return MAX_BLOCKS == free_blocks_;
 	}
 
-	BOOST_FORCEINLINE bool try_lock() BOOST_NOEXCEPT
+	BOOST_FORCEINLINE chunk* next()
 	{
-		return mtx_.try_lock();
+		return next_;
 	}
 
-	BOOST_FORCEINLINE void unlock() BOOST_NOEXCEPT
+	BOOST_FORCEINLINE void set_next(chunk* const next)
 	{
-		mtx_.unlock();
+		next_ = next;
+	}
+
+	BOOST_FORCEINLINE chunk* prev()
+	{
+		return prev_;
+	}
+
+	BOOST_FORCEINLINE void set_prev(chunk* const prev)
+	{
+		prev_ = prev_;
 	}
 
 private:
@@ -81,7 +91,8 @@ private:
 	uint8_t free_blocks_;
 	const uint8_t* begin_;
 	const uint8_t* end_;
-	spin_lock mtx_;
+	chunk* prev_;
+	chunk* next_;
 };
 
 /**
@@ -89,41 +100,29 @@ private:
  */
 class arena {
 BOOST_MOVABLE_BUT_NOT_COPYABLE(arena)
-private:
-	/// Vector of memory block chunks
-	typedef lockfree::forward_list<chunk*> chunks_list;
-	typedef boost::thread_specific_ptr<chunk> local_ptr;
-	static BOOST_FORCEINLINE void no_free_f(chunk* cnk)
-	{}
 public:
 	/// Constructs new arena of specific block size
 	explicit arena(const std::size_t size);
 	/// releases allocator and all allocated memory
 	~arena() BOOST_NOEXCEPT_OR_NOTHROW;
 	/// Allocates a single memory block of fixed size
-	inline void* malloc BOOST_PREVENT_MACRO_SUBSTITUTION(std::size_t size) BOOST_THROWS(std::bad_alloc);
+	inline void* malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_alloc);
 	/**
 	* Releases previesly allocated block of memory
 	* \param ptr pointer to the allocated memory
 	*/
-	inline void free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr,const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
-#ifdef BOOST_WINDOWS
-	static void* operator new(const std::size_t size) BOOST_THROWS(std::bad_alloc)
-	{
-		return sys::xmalloc(size);
-	}
-	static void operator delete(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW
-	{
-		sys::xfree(ptr);
-	}
-#endif // BOOST_WINDOWS
+	inline bool free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr) BOOST_NOEXCEPT_OR_NOTHROW;
+
 private:
-	BOOST_FORCEINLINE chunk* create_new_chunk(std::size_t size) const;
-	BOOST_FORCEINLINE void release_chunk(chunk* const cnk) const BOOST_NOEXCEPT_OR_NOTHROW;
+	static BOOST_FORCEINLINE chunk* create_new_chunk(const std::size_t size);
+	static BOOST_FORCEINLINE void release_chunk(chunk* const cnk,const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
+	BOOST_FORCEINLINE bool try_to_free(const uint8_t* ptr, chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW;
 private:
-	local_ptr alloc_current_;
-	local_ptr free_current_;
-	chunks_list chunks_;
+	const std::size_t block_size_;
+	chunk* const root_;
+	chunk* alloc_current_;
+	chunk* free_current_;
+	spin_lock mtx_;
 	static const unsigned int CPUS;
 };
 
@@ -131,16 +130,16 @@ class pool
 {
 BOOST_MOVABLE_BUT_NOT_COPYABLE(pool)
 public:
-	pool(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
+	pool(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
 	~pool() BOOST_NOEXCEPT_OR_NOTHROW;
-	BOOST_FORCEINLINE void *malloc BOOST_PREVENT_MACRO_SUBSTITUTION();
+	BOOST_FORCEINLINE void *malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size);
 	BOOST_FORCEINLINE void free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW;
 private:
-	inline arena* get_arena();
+	typedef lockfree::forward_list<arena*> arenas_list;
+	inline arena* get_arena(const std::size_t size);
 private:
-	boost::atomic<arena*> arena_;
-	const std::size_t block_size_;
-	static spin_lock _mtx;
+	boost::thread_specific_ptr<arena> arena_;
+	arenas_list all_arenas_;
 };
 
 /**
@@ -156,16 +155,6 @@ public:
 	BOOST_FORCEINLINE void* malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size) const;
 	BOOST_FORCEINLINE void free BOOST_PREVENT_MACRO_SUBSTITUTION(void *ptr, const std::size_t size) const BOOST_NOEXCEPT_OR_NOTHROW;
 	~object_allocator() BOOST_NOEXCEPT_OR_NOTHROW;
-#ifdef BOOST_WINDOWS
-	static void* operator new(const std::size_t size) BOOST_THROWS(std::bad_alloc)
-	{
-		return sys::xmalloc(size);
-	}
-	static void operator delete(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW
-	{
-		sys::xfree(ptr);
-	}
-#endif // BOOST_WINDOWS
 private:
 	explicit object_allocator();
 	BOOST_FORCEINLINE pool_t* get(const std::size_t size) const BOOST_NOEXCEPT_OR_NOTHROW;

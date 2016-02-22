@@ -1,14 +1,15 @@
-#   ifndef __SYS_ALOC_ONCE__
-#   define __SYS_ALOC_ONCE__
+#ifndef __SYS_ALOC_ONCE__
+#define __SYS_ALOC_ONCE__
 
 #ifdef BOOST_WINDOWS
-#   include "win/heapallocator.hpp"
+
+#include "win/heapallocator.hpp"
+
 #else
 
-#include <boost/config.hpp>
-#include <stdlib.h>
-
 namespace boost { namespace smallobject { namespace sys {
+
+#ifdef BOOST_POSIX_API
 
 BOOST_FORCEINLINE void* xmalloc(std::size_t size)
 {
@@ -23,7 +24,8 @@ BOOST_FORCEINLINE void xfree(void * const ptr)
 }
 
 }}} /// namespace boost { namespace smallobject { namespace sys
+#endif
 
-#endif // platform switch
+#endif // BOOST_WINDOWS
 
-#   endif // __SYS_ALOC_ONCE__
+#endif // __SYS_ALOC_ONCE__

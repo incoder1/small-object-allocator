@@ -27,7 +27,9 @@ chunk::chunk(const uint8_t block_size, const uint8_t* begin) BOOST_NOEXCEPT_OR_N
 	position_(0),
 	free_blocks_(MAX_BLOCKS),
 	begin_( begin ),
-	end_(begin + (MAX_BLOCKS * block_size) )
+	end_(begin + (MAX_BLOCKS * block_size) ),
+	prev_(NULL),
+	next_(NULL)
 {
 	register uint8_t i = 0;
 	uint8_t* p = const_cast<uint8_t*>(begin_);
@@ -39,178 +41,175 @@ chunk::chunk(const uint8_t block_size, const uint8_t* begin) BOOST_NOEXCEPT_OR_N
 
 BOOST_FORCEINLINE uint8_t* chunk::allocate(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW {
 	register uint8_t *result = NULL;
-	if(free_blocks_)
-	{
-        boost::unique_lock<spin_lock> guard(mtx_, boost::try_to_lock);
-        if( guard.owns_lock() && free_blocks_ )  {
-            result = const_cast<uint8_t*>( begin_ + (position_ * block_size) );
-            position_ = *result;
-            --free_blocks_;
-		}
+	if(free_blocks_) {
+		result = const_cast<uint8_t*>( begin_ + (position_ * block_size) );
+		position_ = *result;
+		--free_blocks_;
 	}
 	return result;
 }
 
 BOOST_FORCEINLINE bool chunk::release(const uint8_t *ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
 {
-    if( ptr >= begin_ && ptr < end_ ) {
-        boost::unique_lock<spin_lock> lock(mtx_);
+	register bool result = ptr >= begin_ && ptr < end_;
+    if( result ) {
         *(const_cast<uint8_t*>(ptr)) = position_;
         position_ =  static_cast<uint8_t>( (ptr - begin_) / block_size );
         ++free_blocks_;
         return true;
     }
-    return false;
+    return result;
 }
 
 //arena
 const unsigned int arena::CPUS = boost::thread::hardware_concurrency();
 
-arena::arena(const std::size_t size):
-	alloc_current_(arena::no_free_f ),
-	free_current_(arena::no_free_f)
+BOOST_FORCEINLINE chunk* arena::create_new_chunk(const std::size_t size)
 {
-	chunk *c = NULL;
-	for(unsigned int i=0; i < CPUS; i++) {
-		c = create_new_chunk(size);
-		chunks_.push_front(c);
-	}
-	alloc_current_.reset(c);
-}
-
-BOOST_FORCEINLINE chunk* arena::create_new_chunk(const std::size_t size) const
-{
-	register void *ptr = sys::xmalloc( sizeof(chunk) + (size * chunk::MAX_BLOCKS) );
+	void *ptr = sys::xmalloc( sizeof(chunk) + (size * chunk::MAX_BLOCKS) );
 	const uint8_t *begin = static_cast<uint8_t*>(ptr) + sizeof(chunk);
 	return new (ptr) chunk(size, begin);
 }
 
-BOOST_FORCEINLINE void arena::release_chunk(chunk* const cnk) const BOOST_NOEXCEPT_OR_NOTHROW
+BOOST_FORCEINLINE void arena::release_chunk(chunk* const cnk, const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW
 {
 	assert(cnk);
 	cnk->~chunk();
-	sys::xfree( static_cast<void*>(cnk) );
+	sys::xfree( static_cast<void*>(cnk), size + sizeof(chunk) );
 }
+
+arena::arena(const std::size_t size):
+	block_size_(size),
+	root_( create_new_chunk(block_size_) ),
+	alloc_current_(root_),
+	free_current_(root_)
+{}
 
 arena::~arena() BOOST_NOEXCEPT_OR_NOTHROW
 {
-	chunks_list::iterator it = chunks_.begin();
-	chunks_list::iterator end = chunks_.end();
-	while(it != end)
-	{
-		release_chunk(*it);
-		++it;
-	}
+  chunk *chnk = root_;
+  while(NULL != chnk) {
+	 chnk = chnk->next();
+	 if(NULL != chnk) {
+		release_chunk(chnk, block_size_);
+	 }
+  }
+  release_chunk(root_, block_size_);
 }
 
-inline void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size) BOOST_THROWS(std::bad_alloc)
+inline void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_alloc)
 {
-	chunk* cnk = alloc_current_.get();
-	uint8_t *result = cnk ? cnk->allocate(size) :  NULL;
-	if(!result) {
-		chunks_list::const_iterator it = chunks_.cbegin();
-		chunks_list::const_iterator end = chunks_.cend();
-		// if previws failed, try to allocate from an exising chunk
-		while(it != end) {
-			cnk = (*it);
-			result = cnk->allocate(size);
-			if(result) {
-				break;
-			}
-			++it;
-		}
-		if(result) {
-			alloc_current_.reset(cnk);
-		}
+	chunk* chnk = alloc_current_;
+	uint8_t* result = NULL;
+	// try to allocate from current chunk
+	{
+		boost::unique_lock<spin_lock> lock(mtx_);
+		result = chnk->allocate(block_size_);
 	}
 	if(!result) {
-        // no space left, or all memory chunks were locked by another threads
-		cnk =  create_new_chunk(size);
-		result = cnk->allocate(size);
-		chunks_.push_front( cnk );
-		alloc_current_.reset(cnk);
-		free_current_.reset(cnk);
+		// try to allocate from existing chunks
+		chnk = chnk->next();
+		while(chnk) {
+			boost::unique_lock<spin_lock> lock(mtx_);
+			result = chnk->allocate(block_size_);
+			if(result) {
+				alloc_current_ = chnk;
+				break;
+			}
+			chnk = chnk->next();
+		}
+		// no space left, create new chunk
+		if(!result) {
+			boost::unique_lock<spin_lock> lock(mtx_);
+			chunk* new_chunk = create_new_chunk(block_size_);
+			new_chunk->set_prev(chnk);
+			chnk->set_next(chnk);
+			alloc_current_ = new_chunk;
+			free_current_ = new_chunk;
+		}
 	}
 	return static_cast<void*>(result);
 }
 
-inline void arena::free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr,const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW
+inline bool arena::try_to_free(const uint8_t* ptr, chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW
 {
-	const uint8_t *p = static_cast<const uint8_t*>(ptr);
-	chunk *cnk = free_current_.get();
-	if( cnk && !cnk->release(p,size) ) {
-		chunks_list::const_iterator it = chunks_.cbegin();
-		chunks_list::const_iterator prev = chunks_.cbefore_begin();
-		chunks_list::const_iterator end = chunks_.cend();
-		std::size_t lcount = 0;
-		while(true) {
-            cnk = *it;
-			if ( cnk->release(p,size) ) {
-				// shrinking if needed
-				if( lcount > CPUS && cnk->empty() ) {
-					if( cnk->try_lock() ) {
-						if( cnk->empty() ) {
-							chunks_.pop_after(prev);
-							release_chunk(cnk);
-						} else {
-							cnk->unlock();
-						}
-					}
-				}
-                break;
+	boost::unique_lock<spin_lock> lock(mtx_);
+	return cnk->release(ptr,block_size_);
+}
+
+bool arena::free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr) BOOST_NOEXCEPT_OR_NOTHROW
+{
+	const uint8_t *rptr = static_cast<const uint8_t*>(ptr);
+	chunk* chnk = free_current_;
+	bool result = try_to_free(rptr, chnk);
+	if(!result) {
+		chnk = root_;
+		std::size_t count = 0;
+		while(NULL != chnk) {
+            chnk = chnk->next();
+			result = try_to_free(rptr, chnk);
+			if(result) {
+				break;
 			}
-			++lcount;
-			++prev;
-            if(++it == end) {
-                lcount = 0;
-                it = chunks_.cbegin();
-                prev = chunks_.cbefore_begin();
-            }
-    	}
-		free_current_.reset(cnk);
+			// if emty inc count for shrinking
+			if(chnk->empty()) ++count;
+		}
+		// shrink chunk if empty, and there are anoeth empty chunks
+		if(result && (count > CPUS) && chnk->empty() ) {
+			boost::unique_lock<spin_lock> lock(mtx_);
+			if( chnk->empty() ) {
+				chnk->prev()->set_next( chnk->next() );
+				release_chunk(chnk, block_size_);
+			}
+		}
 	}
+	return result;
 }
 
 // poll
-spin_lock pool::_mtx;
-
-pool::pool(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW:
-    arena_(NULL),
-    block_size_(block_size)
-{
-}
+pool::pool(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW:
+    arena_(),
+    all_arenas_()
+{}
 
 pool::~pool() BOOST_NOEXCEPT_OR_NOTHROW
-{
-   register arena* ar = arena_.load(boost::memory_order_relaxed);
-   if( ar ) {
-        delete ar;
-   }
-}
+{}
 
-inline arena* pool::get_arena()
+inline arena* pool::get_arena(const std::size_t size)
 {
-    arena *result = arena_.load(boost::memory_order_relaxed);
+    arena *result = arena_.get();
     if(!result) {
-        boost::unique_lock<spin_lock> lock(_mtx);
-        result = arena_.load(boost::memory_order_acquire);
-        if(!result) {
-            result = new arena(block_size_);
-            arena_.store(result, boost::memory_order_release);
-        }
+		result = new arena(size);
+		arena_.reset(result);
+		all_arenas_.push_front(result);
     }
     return result;
 }
 
-BOOST_FORCEINLINE void *pool::malloc BOOST_PREVENT_MACRO_SUBSTITUTION()
+BOOST_FORCEINLINE void *pool::malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size)
 {
-    return get_arena()->malloc(block_size_);
+    return get_arena(size)->malloc();
 }
 
 BOOST_FORCEINLINE void pool::free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW
 {
-    arena *all = arena_.load(boost::memory_order_relaxed);
-    all->free(ptr, block_size_);
+    bool released = arena_->free(ptr);
+    // if memory allocated from another thread
+    // loop all arenas and release this memory block
+    if(!released) {
+		arenas_list::const_iterator it = all_arenas_.cbegin();
+		arenas_list::const_iterator end = all_arenas_.cend();
+		while(!released) {
+			released = (*it)->free(ptr);
+			if(++it == end) {
+				// yield this thread
+				// since allocating thread updating all_arenas_ list
+				// may happens in case of good hardware concurrency
+				boost::this_thread::yield();
+				it = all_arenas_.cbegin();
+			}
+		}
+    }
 }
 
 // object_allocator
@@ -218,7 +217,7 @@ BOOST_FORCEINLINE void pool::free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const 
 static const std::size_t MIN_SIZE = align_up( sizeof(std::size_t), sizeof(object) ); // 8 bytes for 32 bit and 16 bytes for 64 bit
 static const std::size_t SHIFT = MIN_SIZE / sizeof(std::size_t); // 2 since object size not changed
 // 14 pools
-static const std::size_t POOLS_COUNT = ( ( MAX_SIZE / sizeof(std::size_t) ) ) - SHIFT;
+static const std::size_t POOLS_COUNT = ( ( MAX_SIZE / sizeof(std::size_t) ) ) - SHIFT; // count of small object pools = 14
 
 
 const object_allocator* object_allocator::instance()
@@ -263,7 +262,7 @@ BOOST_FORCEINLINE void* object_allocator::malloc BOOST_PREVENT_MACRO_SUBSTITUTIO
 {
 	pool_t* p = get(size);
 	assert(p);
-	return p->malloc();
+	return p->malloc(size);
 }
 
 BOOST_FORCEINLINE void object_allocator::free BOOST_PREVENT_MACRO_SUBSTITUTION(void* const ptr, const std::size_t size) const BOOST_NOEXCEPT_OR_NOTHROW

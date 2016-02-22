@@ -24,6 +24,7 @@ public:
 	spin_lock() BOOST_NOEXCEPT_OR_NOTHROW:
 		state_(UNLOCKED)
 	{}
+
 	inline void lock() BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		std::size_t spin_count = 0;
@@ -36,9 +37,11 @@ public:
             }
 		}
 	}
+
 	BOOST_FORCEINLINE bool try_lock() BOOST_NOEXCEPT_OR_NOTHROW {
 		return state_.exchange(LOCKED, boost::memory_order_acquire);
 	}
+
 	BOOST_FORCEINLINE void unlock() BOOST_NOEXCEPT_OR_NOTHROW {
 		state_.store(UNLOCKED, boost::memory_order_release);
 	}

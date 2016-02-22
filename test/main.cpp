@@ -108,7 +108,7 @@ BOOST_DECLARE_OBJECT_PTR_T(Widget);
 BOOST_DECLARE_OBJECT_PTR_T(Panel);
 BOOST_DECLARE_OBJECT_PTR_T(Button);
 
-static const int THREADS = 32;//std::thread::hardware_concurrency();
+static const int THREADS = std::thread::hardware_concurrency() * 16;
 static const int TEST_COUNT = 185042; // 24mb / 136b
 
 void test_small_routine()
@@ -175,7 +175,7 @@ int main(int argc, const char** argv)
 	std::cout<<std::endl;
 	dummy = std::malloc(5242880);
 	::std::free(dummy);
-	for(int i=0; i < 3; i++) {
+	for(int i=0; i < 8; i++) {
 		multi_thread_test("MT Libc: ",test_clib_routine);
 		multi_thread_test("MT sobj: ",test_small_routine);
 	}

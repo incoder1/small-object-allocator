@@ -67,7 +67,7 @@ BOOST_FORCEINLINE void* xmalloc(std::size_t size)
 	return detail::heap_allocator::instance()->allocate(size);
 }
 
-BOOST_FORCEINLINE void xfree(void * const ptr)
+BOOST_FORCEINLINE void xfree(void * const ptr,const std::size_t size = 0)
 {
 	detail::heap_allocator::instance()->release(ptr);
 }

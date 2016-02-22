@@ -45,12 +45,10 @@
 					<Add option="-std=c++11" />
 					<Add option="-fno-exceptions" />
 					<Add option="-fno-rtti" />
-					<Add option="-flto" />
 					<Add directory="D:/cpp/boost_1_60_0" />
 					<Add directory="include" />
 				</Compiler>
 				<Linker>
-					<Add option="-flto" />
 					<Add library="boost_system-mt.dll" />
 					<Add library="boost_thread-mt.dll" />
 					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
