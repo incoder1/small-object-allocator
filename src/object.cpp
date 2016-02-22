@@ -78,11 +78,12 @@ BOOST_FORCEINLINE void arena::release_chunk(chunk* const cnk, const std::size_t 
 	sys::xfree( static_cast<void*>(cnk), size + sizeof(chunk) );
 }
 
-arena::arena(const std::size_t size):
+arena::arena(const std::size_t size, const pool* owner):
 	block_size_(size),
 	root_( create_new_chunk(block_size_) ),
 	alloc_current_(root_),
-	free_current_(root_)
+	free_current_(root_),
+	owner_(owner)
 {}
 
 arena::~arena() BOOST_NOEXCEPT_OR_NOTHROW
@@ -95,6 +96,21 @@ arena::~arena() BOOST_NOEXCEPT_OR_NOTHROW
 	 }
   }
   release_chunk(root_, block_size_);
+}
+
+bool arena::empty() BOOST_NOEXCEPT_OR_NOTHROW
+{
+	bool result = false;
+	chunk *chnk = root_;
+	while(NULL != chnk) {
+		chnk = chnk->next();
+		if(NULL != chnk) {
+			boost::unique_lock<spin_lock> lock(mtx_);
+			result = chnk->empty();
+			if(!result) break;
+		}
+   }
+   return result;
 }
 
 inline void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_alloc)
@@ -130,6 +146,7 @@ inline void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::
 	}
 	return static_cast<void*>(result);
 }
+
 
 inline bool arena::try_to_free(const uint8_t* ptr, chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW
 {
@@ -168,19 +185,47 @@ bool arena::free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr) BOOST_NOEXCEP
 
 // poll
 pool::pool(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW:
-    arena_(),
-    all_arenas_()
+    arena_( &pool::release_arena )
 {}
 
+void pool::release_arena(arena* ar) BOOST_NOEXCEPT_OR_NOTHROW
+{
+	pool* this_pool = const_cast<pool*>(ar->owner());
+	this_pool->erase_arena(ar);
+}
+
+inline void pool::erase_arena(arena* ar)
+{
+	if( ar->empty() ) {
+		// don't hold lock when releasing arena memory
+		{
+			boost::unique_lock<spin_lock> lock(mtx_);
+			arenas_list::iterator pos = std::find(all_arenas_.begin(), all_arenas_.end(), ar);
+			all_arenas_.erase(pos);
+		}
+		delete ar;
+	}
+}
+
 pool::~pool() BOOST_NOEXCEPT_OR_NOTHROW
-{}
+{
+	// release all arenas with deallocation thread thread alloc/free missmatch
+	// or with memory leak
+	arenas_list::const_iterator it = all_arenas_.cbegin();
+	arenas_list::const_iterator end = all_arenas_.cend();
+	while(it != end) {
+		delete *it;
+		++it;
+	}
+}
 
 inline arena* pool::get_arena(const std::size_t size)
 {
     arena *result = arena_.get();
     if(!result) {
-		result = new arena(size);
+		result = new arena(size, this);
 		arena_.reset(result);
+		boost::unique_lock<spin_lock> lock(mtx_);
 		all_arenas_.push_front(result);
     }
     return result;
@@ -194,7 +239,7 @@ BOOST_FORCEINLINE void *pool::malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std:
 BOOST_FORCEINLINE void pool::free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW
 {
     bool released = arena_->free(ptr);
-    // if memory allocated from another thread
+    // if memory allocated from another thread (thread missmatch)
     // loop all arenas and release this memory block
     if(!released) {
 		arenas_list::const_iterator it = all_arenas_.cbegin();

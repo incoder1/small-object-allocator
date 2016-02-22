@@ -7,7 +7,7 @@
 #include <chrono>
 
 struct rect {
-	int l,t,r,b;
+	uint8_t l,t,r,b;
 };
 
 class MyObject:public boost::noncopyable {
@@ -58,7 +58,7 @@ public:
 	{}
 private:
 	MyPanel *parent_;
-	MyWidget *child_;
+	MyWidget **childs_;
 };
 
 class MyButton:public MyWidget {
@@ -67,8 +67,8 @@ public:
 		MyWidget()
 	{}
 private:
-	enum _state {ENABLED, DISABLED};
-	_state state_;
+	rect border_;
+	uint64_t color;
 };
 
 BOOST_DECLARE_OBJECT_PTR_T(MyWidget);
@@ -93,7 +93,7 @@ public:
 	{}
 private:
 	Panel *parent_;
-	Widget *child_;
+	Widget **childs_;
 };
 
 class Button:public Widget {
@@ -102,8 +102,8 @@ public:
 		Widget()
 	{}
 private:
-	enum _state {ENABLED, DISABLED};
-	_state state_;
+	rect border_;
+	uint64_t color;
 };
 
 BOOST_DECLARE_OBJECT_PTR_T(Widget);
@@ -111,7 +111,7 @@ BOOST_DECLARE_OBJECT_PTR_T(Panel);
 BOOST_DECLARE_OBJECT_PTR_T(Button);
 
 static const int THREADS = std::thread::hardware_concurrency() * 2;
-static const int OBJECTS_COUNT = 56980; // ~10mb for 64 bit
+static const int OBJECTS_COUNT = 87390; // ~10mb for 64 bit
 static const int TESTS_COUNT = 64;
 
 void so_routine()

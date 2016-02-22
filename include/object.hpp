@@ -3,8 +3,8 @@
 
 #include <cstddef>
 #include <new>
+#include <list>
 
-#include "nb_forward_list.hpp"
 #include "spinlock.hpp"
 #include "sys_allocator.hpp"
 
@@ -95,6 +95,8 @@ private:
 	chunk* next_;
 };
 
+class pool;
+
 /**
  * \brief Allocates only a signle memory block of the same size
  */
@@ -102,7 +104,7 @@ class arena {
 BOOST_MOVABLE_BUT_NOT_COPYABLE(arena)
 public:
 	/// Constructs new arena of specific block size
-	explicit arena(const std::size_t size);
+	arena(const std::size_t size,const pool* owner);
 	/// releases allocator and all allocated memory
 	~arena() BOOST_NOEXCEPT_OR_NOTHROW;
 	/// Allocates a single memory block of fixed size
@@ -113,6 +115,12 @@ public:
 	*/
 	inline bool free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr) BOOST_NOEXCEPT_OR_NOTHROW;
 
+	bool empty() BOOST_NOEXCEPT_OR_NOTHROW;
+
+	BOOST_FORCEINLINE const pool* owner() BOOST_NOEXCEPT_OR_NOTHROW
+	{
+		return owner_;
+	}
 private:
 	static BOOST_FORCEINLINE chunk* create_new_chunk(const std::size_t size);
 	static BOOST_FORCEINLINE void release_chunk(chunk* const cnk,const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
@@ -123,6 +131,7 @@ private:
 	chunk* alloc_current_;
 	chunk* free_current_;
 	spin_lock mtx_;
+	const pool* owner_;
 	static const unsigned int CPUS;
 };
 
@@ -135,9 +144,12 @@ public:
 	BOOST_FORCEINLINE void *malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size);
 	BOOST_FORCEINLINE void free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW;
 private:
-	typedef lockfree::forward_list<arena*> arenas_list;
+	typedef std::list<arena*> arenas_list;
 	inline arena* get_arena(const std::size_t size);
+	static void release_arena(arena* ar) BOOST_NOEXCEPT_OR_NOTHROW;
+	inline void erase_arena(arena* ar);
 private:
+	spin_lock mtx_;
 	boost::thread_specific_ptr<arena> arena_;
 	arenas_list all_arenas_;
 };
