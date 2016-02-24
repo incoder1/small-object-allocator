@@ -4,13 +4,18 @@
 #include <cstddef>
 #include <new>
 #include <list>
+#include <forward_list>
 
-#include "spinlock.hpp"
-#include "sys_allocator.hpp"
-
+#include <boost/config.hpp>
 #include <boost/intrusive_ptr.hpp>
 #include <boost/exception/exception.hpp>
+
+#include <boost/thread/thread.hpp>
 #include <boost/thread/tss.hpp>
+
+#include <boost/thread/locks.hpp>
+#include "sys_allocator.hpp"
+#include "critical_section.hpp"
 
 #ifndef BOOST_THROWS
 #	ifdef BOOST_NO_CXX11_NOEXCEPT
@@ -25,11 +30,9 @@ namespace boost {
 namespace smallobject {
 
 // 64 for 32 bit and 128 for 64 bit instructions
-extern BOOST_SYMBOL_VISIBLE const std::size_t MAX_SIZE;
+extern const std::size_t MAX_SIZE;
 
 namespace detail {
-
-using smallobject::spin_lock;
 
 /**
  * ! \brief A chunk of allocated memory divided on UCHAR_MAX of fixed blocks
@@ -66,45 +69,38 @@ public:
 		return MAX_BLOCKS == free_blocks_;
 	}
 
-	BOOST_FORCEINLINE chunk* next()
-	{
-		return next_;
-	}
-
-	BOOST_FORCEINLINE void set_next(chunk* const next)
-	{
-		next_ = next;
-	}
-
-	BOOST_FORCEINLINE chunk* prev()
-	{
-		return prev_;
-	}
-
-	BOOST_FORCEINLINE void set_prev(chunk* const prev)
-	{
-		prev_ = prev_;
-	}
-
 private:
 	uint8_t position_;
 	uint8_t free_blocks_;
 	const uint8_t* begin_;
 	const uint8_t* end_;
-	chunk* prev_;
-	chunk* next_;
 };
 
-class pool;
+class _internal: private boost::noncopyable
+{
+public:
+#ifdef BOOST_WINDOWS_API
+	void* operator new(std::size_t size) BOOST_THROWS(std::bad_alloc)
+	{
+        return sys::xmalloc(size);
+	}
+	void operator delete(void* const ptr) BOOST_NOEXCEPT_OR_NOTHROW
+	{
+        sys::xfree( ptr, 0 );
+	}
+#endif // BOOST_WINDOWS
+};
 
 /**
  * \brief Allocates only a signle memory block of the same size
  */
-class arena {
+class arena: public _internal {
 BOOST_MOVABLE_BUT_NOT_COPYABLE(arena)
+private:
+	typedef std::list<chunk*, sys::allocator<chunk*> > vchunks;
 public:
 	/// Constructs new arena of specific block size
-	arena(const std::size_t size,const pool* owner);
+	explicit arena(const std::size_t block_size);
 	/// releases allocator and all allocated memory
 	~arena() BOOST_NOEXCEPT_OR_NOTHROW;
 	/// Allocates a single memory block of fixed size
@@ -115,50 +111,59 @@ public:
 	*/
 	inline bool free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr) BOOST_NOEXCEPT_OR_NOTHROW;
 
-	bool empty() BOOST_NOEXCEPT_OR_NOTHROW;
-
-	BOOST_FORCEINLINE const pool* owner() BOOST_NOEXCEPT_OR_NOTHROW
+	BOOST_FORCEINLINE reserve() BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		return owner_;
+		return !reserved_.exchange(true, boost::memory_order_acquire);
+	}
+
+	BOOST_FORCEINLINE bool reserved() BOOST_NOEXCEPT_OR_NOTHROW
+	{
+		return reserved_.load(boost::memory_order_relaxed);
+	}
+
+	BOOST_FORCEINLINE void release() BOOST_NOEXCEPT_OR_NOTHROW
+	{
+		reserved_.store(false, boost::memory_order_release);
 	}
 private:
 	static BOOST_FORCEINLINE chunk* create_new_chunk(const std::size_t size);
 	static BOOST_FORCEINLINE void release_chunk(chunk* const cnk,const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
+	BOOST_FORCEINLINE uint8_t* try_to_alloc(chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW;
 	BOOST_FORCEINLINE bool try_to_free(const uint8_t* ptr, chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW;
+	void shrink() BOOST_NOEXCEPT_OR_NOTHROW;
 private:
 	const std::size_t block_size_;
-	chunk* const root_;
+	vchunks chunks_;
 	chunk* alloc_current_;
 	chunk* free_current_;
-	spin_lock mtx_;
-	const pool* owner_;
-	static const unsigned int CPUS;
+	sys::critical_section mtx_;
+	boost::atomic_bool reserved_;
 };
+
 
 class pool
 {
 BOOST_MOVABLE_BUT_NOT_COPYABLE(pool)
 public:
-	pool(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
+	explicit pool() BOOST_NOEXCEPT_OR_NOTHROW;
 	~pool() BOOST_NOEXCEPT_OR_NOTHROW;
-	BOOST_FORCEINLINE void *malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size);
+	void *malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size);
 	BOOST_FORCEINLINE void free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW;
 private:
-	typedef std::list<arena*> arenas_list;
-	inline arena* get_arena(const std::size_t size);
-	static void release_arena(arena* ar) BOOST_NOEXCEPT_OR_NOTHROW;
-	inline void erase_arena(arena* ar);
+	inline arena* reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
+	static inline void release_arena(arena* ar) BOOST_NOEXCEPT_OR_NOTHROW;
 private:
-	spin_lock mtx_;
+	typedef std::forward_list<arena*, sys::allocator<arena*> > arenas_pool;
 	boost::thread_specific_ptr<arena> arena_;
-	arenas_list all_arenas_;
+	arenas_pool arenas_;
+	sys::critical_section mtx_;
 };
 
 /**
  * ! \brief Allocates memory for the small objects
  *  maximum size of small object is sizeof(size_type) * 16
  */
-class object_allocator:private boost::noncopyable
+class object_allocator:public _internal
 {
 private:
 	typedef pool pool_t;
@@ -172,14 +177,14 @@ private:
 	BOOST_FORCEINLINE pool_t* get(const std::size_t size) const BOOST_NOEXCEPT_OR_NOTHROW;
 	static void release() BOOST_NOEXCEPT_OR_NOTHROW;
 private:
-	static spin_lock _smtx;
+	static sys::critical_section _smtx;
 	static boost::atomic<object_allocator*> _instance;
 	pool_t* pools_;
 };
 
 } // namespace detail
 
-class BOOST_SYMBOL_VISIBLE object
+class object
 {
 #if !defined(BOOST_NO_CXX11_DELETED_FUNCTIONS)
       object( const object& ) = delete;

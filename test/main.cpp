@@ -6,6 +6,17 @@
 #include <vector>
 #include <chrono>
 
+
+#ifdef BOOST_NO_EXCEPTIONS
+namespace boost {
+	void throw_exception(std::exception const & e)
+	{
+		std::cerr<< e.what();
+		std::exit(-1);
+	}
+} // namespace boost
+#endif // BOOST_NO_EXCEPTIONS
+
 struct rect {
 	uint8_t l,t,r,b;
 };
@@ -110,9 +121,10 @@ BOOST_DECLARE_OBJECT_PTR_T(Widget);
 BOOST_DECLARE_OBJECT_PTR_T(Panel);
 BOOST_DECLARE_OBJECT_PTR_T(Button);
 
-static const int THREADS = std::thread::hardware_concurrency() * 2;
-static const int OBJECTS_COUNT = 250000;
-static const int TESTS_COUNT = 64;
+static const int THREADS = boost::thread::hardware_concurrency() * 2;
+static const int OBJECTS_COUNT = 8706; // ~1mb of small objects
+static const int OBJECTS_VECTOR_SIZE = 32;
+static const int TESTS_COUNT = 32;
 
 void so_routine()
 {
@@ -123,6 +135,13 @@ void so_routine()
 		s_Panel pnl(new Panel());
 		s_Widget wd1(new Widget());
 	}
+	std::vector<s_Widget, boost::smallobject::sys::allocator<s_Widget> > widgets(OBJECTS_VECTOR_SIZE);
+	for(int i=0; i < OBJECTS_VECTOR_SIZE/4; i++) {
+		widgets.emplace_back(new Widget());
+		widgets.emplace_back(new Button());
+		widgets.emplace_back(new Panel());
+		widgets.emplace_back(new Widget());
+	}
 }
 
 void libc_routine()
@@ -132,6 +151,13 @@ void libc_routine()
 		s_MyButton btn(new MyButton());
 		s_MyPanel pnl(new MyPanel());
 		s_MyWidget wd1(new MyWidget());
+	}
+	std::vector<s_MyWidget, boost::smallobject::sys::allocator<s_MyWidget> > widgets(OBJECTS_VECTOR_SIZE);
+	for(int i=0; i < OBJECTS_VECTOR_SIZE/4; i++) {
+		widgets.emplace_back(new MyWidget());
+		widgets.emplace_back(new MyButton());
+		widgets.emplace_back(new MyPanel());
+		widgets.emplace_back(new MyWidget());
 	}
 }
 
@@ -171,14 +197,16 @@ double run_benchmarks(benchmark_f benchmark, routine_f routine) {
 }
 
 void print_benchmarks_result(const char* type,double libc_total, double so_total) {
-	std::cout<<"    Benchmarks results for "<< type << " threading" << std::endl;;
+	std::cout<<"    Benchmarks results for "<< type << " threading" << std::endl;
+	double av_libc = libc_total / TESTS_COUNT;
+	double av_so = so_total / TESTS_COUNT;
 	std::cout << "\tLibC average time: "<<  libc_total / TESTS_COUNT << " ms" << std::endl;
 	std::cout << "\tSmallobject average time: "<< so_total / TESTS_COUNT << " ms" << std::endl;
-	if(so_total < libc_total) {
-		double percent = 100.0 - ( (so_total/TESTS_COUNT) * 100.0) / (libc_total/TESTS_COUNT);
+	if(av_so < av_libc) {
+		double percent =  100 -  (av_so * 100  / av_libc);
 		std::cout<<"    Small object "<<percent<<"% more effective"<<std::endl;
 	} else {
-		double percent = 100.0 - ( (libc_total/TESTS_COUNT) * 100.0) / (so_total/TESTS_COUNT);
+		double percent = 100 - (av_libc * 100 / av_so);
 		std::cout<<"   LibC "<<percent<<"% more effective"<<std::endl;
 	}
 }
@@ -198,19 +226,22 @@ int main(int argc, const char** argv)
 	std::cout<<"Button: " << sizeof(Button) <<"    MyButton: " << sizeof(MyButton) <<" bytes" << std::endl;
 	std::cout<<"Panel:  " <<  sizeof(Panel) <<"    MyPanel : " << sizeof(MyPanel) <<" bytes" << std::endl << std::endl;
 
-
 	// Single thread benchmark
 	std::cout<<"Single threading benchmark"<<std::endl;
 	memory_cache_make();
+	std::cout<<"Running LibC benchmark"<<std::endl;
 	double libc_total = run_benchmarks(single_thread_benchmark, libc_routine);
 	memory_cache_make();
+	std::cout<<"Running SO benchmark"<<std::endl;
 	double so_total = run_benchmarks(single_thread_benchmark, so_routine);
-
 	print_benchmarks_result("single", libc_total, so_total);
+
 	std::cout<<std::endl<<"Multi threading with " << THREADS << " threads benchmark"<<std::endl;
 	memory_cache_make();
+	std::cout<<"Running LibC benchmark"<<std::endl;
 	libc_total = run_benchmarks(multi_threads_benchmark, libc_routine);
 	memory_cache_make();
+	std::cout<<"Running SO benchmark"<<std::endl;
 	so_total = run_benchmarks(multi_threads_benchmark, so_routine);
 	print_benchmarks_result("multi", libc_total, so_total);
 	return 0;

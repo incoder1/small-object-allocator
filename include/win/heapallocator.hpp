@@ -1,21 +1,21 @@
 #ifndef __SMALL_OBJECT_WIN_HEAP_ALLOCATOR_HPP_INCLUDED__
 #define __SMALL_OBJECT_WIN_HEAP_ALLOCATOR_HPP_INCLUDED__
 
+#include <boost/config.hpp>
+
 #ifdef BOOST_HAS_PRAGMA_ONCE
 #pragma once
 #endif // BOOST_HAS_PRAGMA_ONCE
 
-#include "spinlock.hpp"
-#include <boost/atomic.hpp>
-#include <boost/noncopyable.hpp>
-
 #include <windows.h>
 
-namespace boost {
+#include <boost/atomic.hpp>
+#include <boost/noncopyable.hpp>
+#include <boost/thread/locks.hpp>
 
-namespace smallobject {
+#include "critical_section.hpp"
 
-namespace sys {
+namespace boost { namespace smallobject { namespace sys {
 
 namespace detail {
 
@@ -25,9 +25,10 @@ private:
 	heap_allocator():
 		hHeap_(NULL)
 	{
-		hHeap_ = ::HeapCreate(HEAP_GENERATE_EXCEPTIONS, 0, 0);
+		hHeap_ = ::HeapCreate(0, 0, 0);
 	}
 	static void release() BOOST_NOEXCEPT_OR_NOTHROW {
+		boost::unique_lock<sys::critical_section> lock(_mtx);
 		delete _instance.load(memory_order::memory_order_consume);
 		_instance.store(NULL, memory_order::memory_order_release);
 	}
@@ -35,7 +36,7 @@ public:
 	static const heap_allocator* instance() {
 		heap_allocator* tmp = _instance.load(memory_order::memory_order_consume);
 		if (!tmp) {
-			boost::unique_lock<smallobject::spin_lock> lock(_mtx);
+			boost::unique_lock<sys::critical_section> lock(_mtx);
 			if (!(tmp = _instance.load(memory_order::memory_order_consume))) {
 				tmp = new heap_allocator();
 				_instance.store(tmp, memory_order::memory_order_release);
@@ -49,14 +50,18 @@ public:
 		::HeapDestroy(hHeap_);
 	}
 	BOOST_FORCEINLINE void* allocate(std::size_t bytes) const {
-		return ::HeapAlloc(hHeap_, 0, bytes);
+		void* result = ::HeapAlloc(hHeap_, 0, bytes);
+		if(NULL == result) {
+			boost::throw_exception( std::bad_alloc() );
+		}
+		return result;
 	}
 	BOOST_FORCEINLINE void release(void * const block) const {
-		::HeapFree(hHeap_, 0, block);
+		assert( ::HeapFree(hHeap_, 0, block) );
 	}
 private:
 	::HANDLE hHeap_;
-	static smallobject::spin_lock _mtx;
+	static sys::critical_section _mtx;
 	static boost::atomic<heap_allocator*> _instance;
 };
 

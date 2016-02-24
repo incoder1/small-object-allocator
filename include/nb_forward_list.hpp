@@ -1,20 +1,22 @@
 #ifndef __BOOST_SMALLOBJECT_FORWARD_LIST__
 #define __BOOST_SMALLOBJECT_FORWARD_LIST__
 
-#include "spinlock.hpp"
-
 #include <iterator>
+
 #include <boost/atomic.hpp>
 #include <boost/move/move.hpp>
+// for node memory allocation
 #include <boost/pool/pool.hpp>
+#include <boost/thread/locks.hpp>
+#include "critical_section.hpp"
 
 namespace boost {
-
-namespace smallobject {
 
 namespace lockfree {
 
 namespace detail {
+
+using namespace boost::atomics;
 
 template<typename E>
 class forward_list_node {
@@ -24,30 +26,41 @@ typedef forward_list_node<E> _self;
 public:
 	typedef E value_type;
 	explicit forward_list_node() BOOST_NOEXCEPT_OR_NOTHROW:
+		element_(NULL),
 		next_(NULL)
 	{}
-	forward_list_node(BOOST_RV_REF(E) e) BOOST_NOEXCEPT_OR_NOTHROW:
-		element_( BOOST_MOVE_BASE(E,e) ),
+	forward_list_node(BOOST_RV_REF(E) e):
+		element_(new E() ),
 		next_(NULL)
-	{}
-	~forward_list_node() BOOST_NOEXCEPT_OR_NOTHROW
-	{}
-	inline _self* next() volatile BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		return next_.load(memory_order_relaxed);
+		*element_ = BOOST_MOVE_BASE(E,e);
 	}
-	void set_next(_self* next) volatile BOOST_NOEXCEPT_OR_NOTHROW {
-		next_.store(next, memory_order_relaxed);
+	forward_list_node(const E& e):
+		element_(new E()),
+		next_(NULL)
+	{
+		*element = e;
 	}
-	bool exchange_next(_self* next) volatile BOOST_NOEXCEPT_OR_NOTHROW {
-		_self* old = next_.load(memory_order_relaxed);
-		return next_.compare_exchange_weak(old, next, memory_order_seq_cst, memory_order_relaxed);
+	~forward_list_node() BOOST_NOEXCEPT_OR_NOTHROW
+	{
+		delete element_;
 	}
-	inline E& element() BOOST_NOEXCEPT_OR_NOTHROW {
-		return element_;
+	inline _self* next() const BOOST_NOEXCEPT_OR_NOTHROW
+	{
+		return next_.load(boost::memory_order_relaxed);
+	}
+	void set_next(_self* next) BOOST_NOEXCEPT_OR_NOTHROW {
+		next_.store(next, boost::memory_order_release);
+	}
+	bool exchange_next(_self* next) BOOST_NOEXCEPT_OR_NOTHROW {
+		_self* old = next_.load(boost::memory_order_relaxed);
+		 return next_.compare_exchange_weak(old, next, boost::memory_order_release, boost::memory_order_relaxed);
+	}
+	inline E& element() const BOOST_NOEXCEPT_OR_NOTHROW {
+		return *element_;
 	}
 private:
-	E element_;
+	mutable E* element_;
 	atomic< forward_list_node<E>* > next_;
 };
 
@@ -241,7 +254,7 @@ public:
 
 	~forward_list() BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		node_type *it = head_;
+		node_type *it = const_cast<node_type*>(head_);
 		node_type* tmp;
 		while(NULL != it)
 		{
@@ -259,19 +272,19 @@ public:
 
 	iterator insert_after(const_iterator position, BOOST_RV_REF(E) e)
 	{
-		node_type* new_next = create_node( forward<E>(e) );
+		node_type* new_next = create_node(boost::forward<E>(e));
 		node_type *pos = position.node();
 		node_type *old_next;
 		do {
 			old_next = pos->next();
 			new_next->set_next(old_next);
-		} while( ! pos->exchange_next(new_next) );
+		} while( !pos->exchange_next(new_next) );
 		return iterator( new_next );
 	}
 
 	inline iterator insert_after(const_iterator position, const E& e)
 	{
-		return insert_after( position, BOOST_MOVE_BASE(E,e) );
+		insert_after(position, BOOST_MOVE_BASE(E,e) );
 	}
 
 	inline iterator insert_after(const_iterator position, std::size_t n, const E& val)
@@ -303,8 +316,7 @@ public:
 			do {
 				new_next = to_remove->next();
 			} while(! pos->exchange_next(new_next) );
-			to_remove->~node_type();
-			release_node( to_remove );
+			release_node(to_remove);
 		}
         return iterator(new_next);
 	}
@@ -320,7 +332,14 @@ public:
 
 	inline void push_front(BOOST_RV_REF(E) e)
 	{
-		insert_after( const_iterator(head_) , forward<E>(e) );
+		node_type* new_next = create_node(boost::forward<E>(e));
+		node_type *pos = head_->next();
+		node_type *mhead = const_cast<node_type*>(head_);
+		node_type *old_next;
+		do {
+			old_next = head_->next();
+			new_next->set_next(old_next);
+		} while( !mhead->exchange_next(new_next) );
 	}
 
 	inline void push_front(const E& e)
@@ -333,7 +352,7 @@ public:
 		if( NULL != frnt ) {
 			e = BOOST_MOVE_BASE(E, frnt->element() );
 		}
-		pop_after( const_iterator(head_) );
+		pop_after( before_begin() );
 	}
 
 	iterator before_begin() BOOST_NOEXCEPT_OR_NOTHROW {
@@ -344,9 +363,8 @@ public:
 		return iterator( head_->next() );
 	}
 
-	iterator& end() BOOST_NOEXCEPT_OR_NOTHROW {
-		static iterator _end( NULL );
-		return _end;
+	iterator end() BOOST_NOEXCEPT_OR_NOTHROW {
+		return iterator( NULL );
 	}
 
 	const_iterator cbegin() const BOOST_NOEXCEPT_OR_NOTHROW
@@ -359,10 +377,9 @@ public:
 		return const_iterator(head_);
 	}
 
-	const_iterator& cend() const BOOST_NOEXCEPT_OR_NOTHROW
+	const_iterator cend() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		static const_iterator _end(NULL);
-		return _end;
+		return const_iterator(NULL);
 	}
 
 	inline std::size_t size() const BOOST_NOEXCEPT_OR_NOTHROW
@@ -378,23 +395,27 @@ public:
 	}
 
 private:
-	BOOST_FORCEINLINE node_type* create_node(BOOST_RV_REF(E) e) {
-		boost::unique_lock<boost::smallobject::spin_lock> lk(mtx_);
-		node_type *result = new ( node_allocator_.malloc() ) node_type(forward<E>(e));
-		return result;
+	inline node_type *create_node(BOOST_RV_REF(E) e) {
+		boost::unique_lock<boost::smallobject::sys::critical_section> lock(mmtx_);
+		return new ( node_allocator_.malloc() ) node_type(boost::forward<E>(e));
 	}
-	BOOST_FORCEINLINE void release_node(node_type* const n) {
-		boost::unique_lock<boost::smallobject::spin_lock> lk(mtx_);
-		node_allocator_.free(n);
+	inline node_type *create_node(const E& e) {
+		boost::unique_lock<boost::smallobject::sys::critical_section> lock(mmtx_);
+		return new ( node_allocator_.malloc() ) node_type(e);
+	}
+	inline void release_node(node_type* const nd) {
+		nd->~node_type();
+		boost::unique_lock<boost::smallobject::sys::critical_section> lock(mmtx_);
+		node_allocator_.free( nd );
 	}
 private:
-	boost::smallobject::spin_lock mtx_;
-	node_type* head_;
+	const node_type* head_;
+	boost::smallobject::sys::critical_section mmtx_;
 	node_allocator node_allocator_;
 };
 
 } // namespace lockfree
-} // namesapace smallobject
-} // namespace boost
+
+} // namespace io
 
 #endif // __BOOST_SMALLOBJECT_FORWARD_LIST__

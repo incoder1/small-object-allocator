@@ -129,11 +129,15 @@
 				</Linker>
 			</Target>
 		</Build>
+		<Unit filename="include/critical_section.hpp" />
 		<Unit filename="include/nb_forward_list.hpp" />
 		<Unit filename="include/object.hpp" />
-		<Unit filename="include/spinlock.hpp" />
 		<Unit filename="include/sys_allocator.hpp" />
 		<Unit filename="include/win/heapallocator.hpp">
+			<Option target="debug-win-gcc-x64" />
+			<Option target="release-win-gcc-x64" />
+		</Unit>
+		<Unit filename="include/win/wincriticalsection.hpp">
 			<Option target="debug-win-gcc-x64" />
 			<Option target="release-win-gcc-x64" />
 		</Unit>
