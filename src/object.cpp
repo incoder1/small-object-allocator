@@ -193,8 +193,11 @@ pool::pool() BOOST_NOEXCEPT_OR_NOTHROW:
 
 pool::~pool() BOOST_NOEXCEPT_OR_NOTHROW
 {
-	for(arenas_pool::const_iterator it= arenas_.cbegin(); it != arenas_.cend(); ++it) {
-		delete *it;
+	arenas_pool::const_iterator it= arenas_.cbefore_begin();
+	arenas_pool::const_iterator end = arenas_.cend();
+	while(++it != end) {
+		arena* ar = *it;
+		delete ar;
 	}
 }
 
@@ -202,6 +205,7 @@ inline arena* pool::reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW
 {
 	arena *result = arena_.get();
 	if(!result) {
+		boost::unique_lock<sys::critical_section> lock(mtx_);
 		arenas_pool::const_iterator it = arenas_.cbegin();
 		arenas_pool::const_iterator end = arenas_.cend();
 		while(it != end) {
@@ -214,7 +218,6 @@ inline arena* pool::reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW
 		}
 		if(!result) {
 			result = new arena(size);
-			boost::unique_lock<sys::critical_section> lock(mtx_);
 			arenas_.push_front(result);
 		}
 		arena_.reset(result);
@@ -233,6 +236,7 @@ BOOST_FORCEINLINE void pool::free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const 
 	bool released = arena_->free(ptr);
 	// handle allocation from another thread
 	while(!released) {
+		boost::unique_lock<sys::critical_section> lock(mtx_);
 		arenas_pool::const_iterator it = arenas_.cbegin();
 		arenas_pool::const_iterator end = arenas_.cend();
 		while(it != end) {
