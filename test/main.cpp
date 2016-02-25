@@ -6,6 +6,8 @@
 #include <vector>
 #include <chrono>
 
+#include <jemalloc.h>
+
 
 #ifdef BOOST_NO_EXCEPTIONS
 namespace boost {
@@ -27,6 +29,20 @@ protected:
 	{}
 public:
 	virtual ~MyObject() BOOST_NOEXCEPT_OR_NOTHROW = 0;
+
+	void* operator new(std::size_t bytes) BOOST_THROWS(std::bad_alloc) {
+		void *result = ::je_malloc(bytes);
+		if(NULL == result) {
+			boost::throw_exception(std::bad_alloc());
+		}
+		return result;
+	}
+
+	void operator delete(void* const ptr) BOOST_NOEXCEPT_OR_NOTHROW
+	{
+		::je_free(ptr);
+	}
+
 private:
 	friend BOOST_FORCEINLINE void intrusive_ptr_add_ref(MyObject* obj);
 	friend BOOST_FORCEINLINE void intrusive_ptr_release(MyObject* const obj);
@@ -229,14 +245,18 @@ int main(int argc, const char** argv)
 	// Single thread benchmark
 	std::cout<<"Single threading benchmark"<<std::endl;
 	std::cout<<"Running LibC benchmark"<<std::endl;
+	boost::atomic_thread_fence(boost::memory_order_release);
 	double libc_total = run_benchmarks(single_thread_benchmark, libc_routine);
 	std::cout<<"Running SO benchmark"<<std::endl;
+	boost::atomic_thread_fence(boost::memory_order_release);
 	double so_total = run_benchmarks(single_thread_benchmark, so_routine);
 	print_benchmarks_result("single", libc_total, so_total);
 
 	std::cout<<std::endl<<"Multi threading with " << THREADS << " threads benchmark"<<std::endl;
+	boost::atomic_thread_fence(boost::memory_order_release);
 	std::cout<<"Running LibC benchmark"<<std::endl;
 	libc_total = run_benchmarks(multi_threads_benchmark, libc_routine);
+	boost::atomic_thread_fence(boost::memory_order_release);
 	std::cout<<"Running SO benchmark"<<std::endl;
 	so_total = run_benchmarks(multi_threads_benchmark, so_routine);
 	print_benchmarks_result("multi", libc_total, so_total);

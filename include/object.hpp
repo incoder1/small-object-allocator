@@ -10,10 +10,11 @@
 #include <boost/intrusive_ptr.hpp>
 #include <boost/exception/exception.hpp>
 
+#include <boost/thread/locks.hpp>
+#include <boost/thread/shared_mutex.hpp>
 #include <boost/thread/thread.hpp>
 #include <boost/thread/tss.hpp>
 
-#include <boost/thread/locks.hpp>
 #include "sys_allocator.hpp"
 #include "critical_section.hpp"
 
@@ -156,7 +157,7 @@ private:
 	typedef std::forward_list<arena*, sys::allocator<arena*> > arenas_pool;
 	boost::thread_specific_ptr<arena> arena_;
 	arenas_pool arenas_;
-	sys::critical_section mtx_;
+	boost::shared_mutex mtx_;
 };
 
 /**

@@ -7,10 +7,10 @@
 #pragma once
 #endif // BOOST_HAS_PRAGMA_ONCE
 
-#if defined(BOOST_WINDOWS_API)
+#if defined(_WIN32) || defined(_WIN64)
 #	include "win/heapallocator.hpp"
-#elif defined(BOOST_POSIX_API)
-#	include "posix/aligned_malloc.hpp"
+#elif defined(BOOST_POSIX_API) && !defined(_WIN32) && !defined(_WIN64)
+#	include "posix/mmap_allocator.hpp"
 #else
 
 namespace boost { namespace smallobject { namespace sys {

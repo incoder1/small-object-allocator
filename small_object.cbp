@@ -42,6 +42,7 @@
 				<Option compiler="gcc" />
 				<Option createDefFile="1" />
 				<Compiler>
+					<Add option="-march=corei7" />
 					<Add option="-O3" />
 					<Add option="-Wall" />
 					<Add option="-fno-exceptions" />
@@ -73,6 +74,7 @@
 					<Add option="-std=gnu++14" />
 					<Add option="-Og" />
 					<Add directory="include" />
+					<Add directory="include/posix" />
 				</Compiler>
 				<Linker>
 					<Add option="-pg" />
@@ -98,6 +100,7 @@
 					<Add option="-fno-rtti" />
 					<Add option="-std=gnu++14" />
 					<Add directory="include" />
+					<Add directory="include/posix" />
 				</Compiler>
 				<Linker>
 					<Add library="boost_system" />
@@ -121,6 +124,7 @@
 					<Add option="-fno-exceptions" />
 					<Add option="-fno-rtti" />
 					<Add directory="include" />
+					<Add directory="include/posix" />
 				</Compiler>
 				<Linker>
 					<Add library="boost_system" />
@@ -129,14 +133,23 @@
 			</Target>
 		</Build>
 		<Unit filename="include/critical_section.hpp" />
-		<Unit filename="include/nb_forward_list.hpp" />
 		<Unit filename="include/object.hpp" />
+		<Unit filename="include/posix/mmap_allocator.hpp">
+			<Option target="debug-gcc-unix-amd64" />
+			<Option target="release-gcc-unix-amd64" />
+			<Option target="release-clang-unix-amd64" />
+		</Unit>
+		<Unit filename="include/posix/spinlock.hpp">
+			<Option target="debug-gcc-unix-amd64" />
+			<Option target="release-gcc-unix-amd64" />
+			<Option target="release-clang-unix-amd64" />
+		</Unit>
 		<Unit filename="include/sys_allocator.hpp" />
-		<Unit filename="include/win/heapallocator.hpp">
+		<Unit filename="include/win/criticalsection.hpp">
 			<Option target="debug-win-gcc-x64" />
 			<Option target="release-win-gcc-x64" />
 		</Unit>
-		<Unit filename="include/win/wincriticalsection.hpp">
+		<Unit filename="include/win/heapallocator.hpp">
 			<Option target="debug-win-gcc-x64" />
 			<Option target="release-win-gcc-x64" />
 		</Unit>

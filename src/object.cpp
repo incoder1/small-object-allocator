@@ -88,8 +88,10 @@ arena::~arena() BOOST_NOEXCEPT_OR_NOTHROW
 
 BOOST_FORCEINLINE uint8_t* arena::try_to_alloc(chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW
 {
+	uint8_t *result = NULL;
 	boost::unique_lock<sys::critical_section> lock(mtx_);
-	return cnk->allocate(block_size_);
+	result = cnk->allocate(block_size_);
+	return result;
 }
 
 void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_alloc)
@@ -205,7 +207,7 @@ inline arena* pool::reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW
 {
 	arena *result = arena_.get();
 	if(!result) {
-		boost::unique_lock<sys::critical_section> lock(mtx_);
+		boost::upgrade_lock<boost::shared_mutex> lock(this->mtx_);
 		arenas_pool::const_iterator it = arenas_.cbegin();
 		arenas_pool::const_iterator end = arenas_.cend();
 		while(it != end) {
@@ -218,6 +220,7 @@ inline arena* pool::reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW
 		}
 		if(!result) {
 			result = new arena(size);
+			boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
 			arenas_.push_front(result);
 		}
 		arena_.reset(result);
@@ -236,7 +239,7 @@ BOOST_FORCEINLINE void pool::free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const 
 	bool released = arena_->free(ptr);
 	// handle allocation from another thread
 	while(!released) {
-		boost::unique_lock<sys::critical_section> lock(mtx_);
+		boost::shared_lock<boost::shared_mutex> lock(mtx_);
 		arenas_pool::const_iterator it = arenas_.cbegin();
 		arenas_pool::const_iterator end = arenas_.cend();
 		while(it != end) {
@@ -264,10 +267,11 @@ const object_allocator* object_allocator::instance()
 	object_allocator *tmp = _instance.load(boost::memory_order_relaxed);
 	if (!tmp) {
 		boost::lock_guard<sys::critical_section> lock(_smtx);
-		tmp = _instance.load(boost::memory_order_acquire);
+		tmp = _instance.load(boost::memory_order_relaxed);
 		if (!tmp) {
 			tmp = new object_allocator();
 			_instance.store(tmp, boost::memory_order_release);
+			boost::atomic_thread_fence(boost::memory_order_acquire);
 			std::atexit(&object_allocator::release);
 		}
 	}

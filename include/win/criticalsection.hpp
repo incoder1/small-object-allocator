@@ -1,8 +1,8 @@
 #ifndef __SMALL_OBJECT_WIN_CRITICALSECTION_HPP_INCLUDED__
 #define __SMALL_OBJECT_WIN_CRITICALSECTION_HPP_INCLUDED__
 
-#ifndef _CRT_SPINCOUNT
-#	define	_CRT_SPINCOUNT 4000
+#ifndef _SOBJ_SPINCOUNT
+#	define	_SOBJ_SPINCOUNT 512
 #endif
 
 #include <boost/noncopyable.hpp>
@@ -15,7 +15,7 @@ class critical_section:private boost::noncopyable
 	public:
 		critical_section() BOOST_NOEXCEPT_OR_NOTHROW
 		{
-			::InitializeCriticalSectionAndSpinCount(&cs_, _CRT_SPINCOUNT);
+			::InitializeCriticalSectionAndSpinCount(&cs_, _SOBJ_SPINCOUNT);
 		}
 		~critical_section() BOOST_NOEXCEPT_OR_NOTHROW
 		{

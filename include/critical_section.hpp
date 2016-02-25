@@ -1,5 +1,5 @@
-#ifndef __CRITICAL_SECTION_HPP_INCLUDED__
-#define __CRITICAL_SECTION_HPP_INCLUDED__
+#ifndef __BOOST_SMALLOBJECT_CRITICAL_SECTION_HPP_INCLUDED__
+#define __BOOST_SMALLOBJECT_CRITICAL_SECTION_HPP_INCLUDED__
 
 #include <boost/config.hpp>
 
@@ -8,9 +8,9 @@
 #endif // BOOST_HAS_PRAGMA_ONCE
 
 #ifdef BOOST_WINDOWS_API
-#	include "win/wincriticalsection.hpp"
+#	include "win/criticalsection.hpp"
 #elif defined(BOOST_POSIX_API)
+#	include "posix/spinlock.hpp"
 #endif // BOOST_WINDOWS_API
 
-
-#endif // __CRITICAL_SECTION_HPP_INCLUDED__
+#endif // __SMALLOBJECT_POSIX_CRITICAL_SECTION_HPP_INCLUDED__
