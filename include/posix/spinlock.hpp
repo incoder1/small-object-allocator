@@ -23,7 +23,7 @@ class critical_section:private boost::noncopyable
 		}
 		BOOST_FORCEINLINE bool try_lock() BOOST_NOEXCEPT_OR_NOTHROW
 		{
-			::pthread_spin_trylock(&sl_);
+			return ::pthread_spin_trylock(&sl_);
 		}
 		BOOST_FORCEINLINE void unlock() BOOST_NOEXCEPT_OR_NOTHROW
 		{

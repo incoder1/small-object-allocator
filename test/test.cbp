@@ -41,7 +41,7 @@
 				<Compiler>
 					<Add option="-march=corei7" />
 					<Add option="-fexpensive-optimizations" />
-					<Add option="-Os" />
+					<Add option="-O3" />
 					<Add option="-fno-exceptions" />
 					<Add option="-fno-rtti" />
 					<Add option="-std=gnu++14" />
@@ -65,9 +65,9 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-fexpensive-optimizations" />
+					<Add option="-std=c++11" />
 					<Add option="-Wall" />
 					<Add option="-g" />
-					<Add option="-std=gnu++14" />
 					<Add option="-Og" />
 					<Add directory="include" />
 				</Compiler>
@@ -86,10 +86,9 @@
 				<Option compiler="gcc" />
 				<Compiler>
 					<Add option="-fexpensive-optimizations" />
-					<Add option="-Os" />
+					<Add option="-O3" />
 					<Add option="-std=gnu++14" />
 					<Add option="-fno-exceptions" />
-					<Add option="-fno-rtti" />
 					<Add directory="include" />
 				</Compiler>
 				<Linker>
@@ -115,7 +114,6 @@
 					<Add directory="include" />
 				</Compiler>
 				<Linker>
-					<Add option="-flto" />
 					<Add library="boost_system" />
 					<Add library="boost_thread" />
 					<Add library="pthread" />

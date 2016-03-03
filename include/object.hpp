@@ -1,12 +1,14 @@
 #ifndef __SMALL_OBJECT_HPP_INCLUDED__
 #define __SMALL_OBJECT_HPP_INCLUDED__
 
+#include <boost/config.hpp>
+
 #include <cstddef>
 #include <new>
 #include <list>
-#include <forward_list>
+#include <vector>
 
-#include <boost/config.hpp>
+#include <boost/atomic.hpp>
 #include <boost/intrusive_ptr.hpp>
 #include <boost/exception/exception.hpp>
 
@@ -57,13 +59,13 @@ public:
 	 * \param block_size size of minimal memory block, must be the same for the whole chunk
 	 * \param blocks count of blocks to be allocated in time
 	 */
-	BOOST_FORCEINLINE uint8_t* allocate(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
+	inline uint8_t* allocate(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
 	/**
 	 * Releases previusly allocated memory if pointer is from this chunk
 	 * \param ptr pointer on allocated memory
 	 * \param bloc_size size of minimal allocated block
 	 */
-	BOOST_FORCEINLINE bool release(const uint8_t* ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
+	inline bool release(const uint8_t* ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW;
 
 	BOOST_FORCEINLINE bool empty() BOOST_NOEXCEPT_OR_NOTHROW
 	{
@@ -163,7 +165,7 @@ private:
 	chunks_rmap chunks_;
 	chunk* alloc_current_;
 	chunk* free_current_;
-	boost::atomic_bool reserved_;
+	boost::atomics::atomic_bool reserved_;
 	std::size_t free_chunks_;
 };
 
@@ -180,7 +182,7 @@ private:
 	inline arena* reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
 	static inline void release_arena(arena* ar) BOOST_NOEXCEPT_OR_NOTHROW;
 private:
-	typedef std::forward_list<arena*, sys::allocator<arena*> > arenas_pool;
+	typedef std::vector<arena*, sys::allocator<arena*> > arenas_pool;
 	boost::thread_specific_ptr<arena> arena_;
 	arenas_pool arenas_;
 	boost::shared_mutex mtx_;

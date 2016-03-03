@@ -18,11 +18,11 @@
 
 namespace boost { namespace smallobject { namespace sys {
 
-BOOST_FORCEINLINE void* xmalloc(std::size_t size) {
+BOOST_FORCEINLINE void* xmalloc(const std::size_t size) {
 	return ::malloc(size);
 }
 
-BOOST_FORCEINLINE void xfree(void * const ptr) {
+BOOST_FORCEINLINE void xfree(void * const ptr,const std::size_t size) {
     ::free(ptr);
 }
 
@@ -32,6 +32,7 @@ BOOST_FORCEINLINE void xfree(void * const ptr) {
 
 namespace boost { namespace smallobject { namespace sys {
 
+#if defined(_WIN32) || defined(_WIN64)
 struct user_allocator_xmalloc
 {
   typedef std::size_t size_type; //!< An unsigned integral type that can represent the size of the largest object to be allocated.
@@ -47,6 +48,9 @@ struct user_allocator_xmalloc
 	xfree(block);
   }
 };
+#else
+typedef boost::default_user_allocator_malloc_free user_allocator_xmalloc;
+#endif // defined
 
 #define __BSM_INTERNAL_POOL_NEXT_SIZE 256
 #define __BSM_INTERNAL_POOL_MAX_SIZE 512

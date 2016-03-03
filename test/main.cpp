@@ -6,8 +6,6 @@
 #include <vector>
 #include <chrono>
 
-#include <jemalloc.h>
-
 
 #ifdef BOOST_NO_EXCEPTIONS
 namespace boost {
@@ -30,18 +28,18 @@ protected:
 public:
 	virtual ~MyObject() BOOST_NOEXCEPT_OR_NOTHROW = 0;
 
-	void* operator new(std::size_t bytes) BOOST_THROWS(std::bad_alloc) {
-		void *result = ::je_malloc(bytes);
-		if(NULL == result) {
-			boost::throw_exception(std::bad_alloc());
-		}
-		return result;
-	}
-
-	void operator delete(void* const ptr) BOOST_NOEXCEPT_OR_NOTHROW
-	{
-		::je_free(ptr);
-	}
+//	void* operator new(std::size_t bytes) BOOST_THROWS(std::bad_alloc) {
+//		void *result = ::je_malloc(bytes);
+//		if(NULL == result) {
+//			boost::throw_exception(std::bad_alloc());
+//		}
+//		return result;
+//	}
+//
+//	void operator delete(void* const ptr) BOOST_NOEXCEPT_OR_NOTHROW
+//	{
+//		::je_free(ptr);
+//	}
 
 private:
 	friend BOOST_FORCEINLINE void intrusive_ptr_add_ref(MyObject* obj);
@@ -152,12 +150,15 @@ void so_routine()
 		s_Widget wd1(new Widget());
 	}
 	std::vector<s_Widget, boost::smallobject::sys::allocator<s_Widget> > widgets(OBJECTS_VECTOR_SIZE);
-	for(int i=0; i < OBJECTS_VECTOR_SIZE/4; i++) {
-		widgets.emplace_back(new Widget());
-		widgets.emplace_back(new Button());
-		widgets.emplace_back(new Panel());
-		widgets.emplace_back(new Widget());
-	}
+	for(int i=0; i < (OBJECTS_COUNT /OBJECTS_VECTOR_SIZE) ; i++) {
+        for(int i=0; i < OBJECTS_VECTOR_SIZE/4; i++) {
+            widgets.emplace_back(new Widget());
+            widgets.emplace_back(new Button());
+            widgets.emplace_back(new Panel());
+            widgets.emplace_back(new Widget());
+        }
+        widgets.clear();
+    }
 }
 
 void libc_routine()
@@ -169,12 +170,15 @@ void libc_routine()
 		s_MyWidget wd1(new MyWidget());
 	}
 	std::vector<s_MyWidget, boost::smallobject::sys::allocator<s_MyWidget> > widgets(OBJECTS_VECTOR_SIZE);
-	for(int i=0; i < OBJECTS_VECTOR_SIZE/4; i++) {
-		widgets.emplace_back(new MyWidget());
-		widgets.emplace_back(new MyButton());
-		widgets.emplace_back(new MyPanel());
-		widgets.emplace_back(new MyWidget());
-	}
+	for(int i=0; i < (OBJECTS_COUNT /OBJECTS_VECTOR_SIZE); i++) {
+        for(int i=0; i < OBJECTS_VECTOR_SIZE/4; i++) {
+            widgets.emplace_back(new MyWidget());
+            widgets.emplace_back(new MyButton());
+            widgets.emplace_back(new MyPanel());
+            widgets.emplace_back(new MyWidget());
+        }
+        widgets.clear();
+    }
 }
 
 typedef void (*routine_f)();

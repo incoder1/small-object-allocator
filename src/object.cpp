@@ -21,7 +21,7 @@ chunk::chunk(const uint8_t block_size, const uint8_t* begin) BOOST_NOEXCEPT_OR_N
 	begin_( begin ),
 	end_(begin + (MAX_BLOCKS * block_size) )
 {
-	register uint8_t i = 0;
+	uint8_t i = 0;
 	uint8_t* p = const_cast<uint8_t*>(begin_);
 	while( i < MAX_BLOCKS) {
 		*p = ++i;
@@ -29,26 +29,21 @@ chunk::chunk(const uint8_t block_size, const uint8_t* begin) BOOST_NOEXCEPT_OR_N
 	}
 }
 
-BOOST_FORCEINLINE uint8_t* chunk::allocate(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW {
-	register uint8_t *result = NULL;
-	if(free_blocks_) {
-		result = const_cast<uint8_t*>( begin_ + (position_ * block_size) );
-		position_ = *result;
-		--free_blocks_;
-	}
+inline uint8_t* chunk::allocate(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW {
+	if(0 == free_blocks_) return NULL;
+    uint8_t *result = const_cast<uint8_t*>( begin_ + (position_ * block_size) );
+    position_ = *result;
+    --free_blocks_;
 	return result;
 }
 
-BOOST_FORCEINLINE bool chunk::release(const uint8_t *ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
+inline bool chunk::release(const uint8_t *ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
 {
-	register bool result = ptr >= begin_ && ptr < end_;
-    if( result ) {
-        *(const_cast<uint8_t*>(ptr)) = position_;
-        position_ =  static_cast<uint8_t>( (ptr - begin_) / block_size );
-        ++free_blocks_;
-        return true;
-    }
-    return result;
+    if( (ptr < begin_) || (ptr > end_) ) return false;
+    *(const_cast<uint8_t*>(ptr)) = position_;
+    position_ =  static_cast<uint8_t>( (ptr - begin_) / block_size );
+    ++free_blocks_;
+    return true;
 }
 
 //arena
@@ -91,9 +86,10 @@ void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_all
 {
 	chunk* current = alloc_current_;
 	uint8_t* result = current->allocate(block_size_);
-	if(!result) {
+	if(NULL == result) {
 		chunks_rmap::iterator it = chunks_.begin();
-		while( it != chunks_.end() ) {
+		chunks_rmap::iterator end = chunks_.end();
+		while( it != end ) {
 			current = it->second;
 			result = current->allocate(block_size_);
 			if(result) {
@@ -104,7 +100,7 @@ void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_all
 		}
 	}
 	// no space left, create new chunk
-	if(!result) {
+	if(NULL == result) {
 		current = create_new_chunk(block_size_);
 		result = current->allocate(block_size_);
 		chunks_.insert(current->begin(), current->end(), BOOST_MOVE_BASE(chunk*,current) );
@@ -181,8 +177,8 @@ pool::pool() BOOST_NOEXCEPT_OR_NOTHROW:
 
 pool::~pool() BOOST_NOEXCEPT_OR_NOTHROW
 {
-	arenas_pool::const_iterator it= arenas_.cbefore_begin();
-	arenas_pool::const_iterator end = arenas_.cend();
+	arenas_pool::iterator it= arenas_.begin();
+	arenas_pool::iterator end = arenas_.end();
 	while(++it != end) {
 		arena* ar = *it;
 		delete ar;
@@ -194,8 +190,8 @@ inline arena* pool::reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW
 	arena *result = arena_.get();
 	if(!result) {
 		boost::upgrade_lock<boost::shared_mutex> lock(this->mtx_);
-		arenas_pool::const_iterator it = arenas_.cbegin();
-		arenas_pool::const_iterator end = arenas_.cend();
+		arenas_pool::iterator it = arenas_.begin();
+		arenas_pool::iterator end = arenas_.end();
 		while(it != end) {
             bool reserved = (*it)->reserve();
 			if(reserved) {
@@ -207,7 +203,7 @@ inline arena* pool::reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW
 		if(!result) {
 			result = new arena(size);
 			boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-			arenas_.push_front(result);
+			arenas_.push_back(result);
 		}
 		arena_.reset(result);
 	}
@@ -226,8 +222,8 @@ BOOST_FORCEINLINE void pool::free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const 
 	// handle allocation from another thread
 	while(!released) {
 		boost::upgrade_lock<boost::shared_mutex> lock(this->mtx_);
-		arenas_pool::const_iterator it = arenas_.cbegin();
-		arenas_pool::const_iterator end = arenas_.cend();
+		arenas_pool::iterator it = arenas_.begin();
+		arenas_pool::iterator end = arenas_.end();
 		while(it != end) {
 			assert(*it);
 			boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
@@ -279,13 +275,13 @@ object_allocator::object_allocator():
 }
 
 object_allocator::~object_allocator() BOOST_NOEXCEPT_OR_NOTHROW {
-	register pool_t* p = pools_;
+	pool_t* p = pools_;
 	for(uint8_t i = 0; i < POOLS_COUNT ; i++ )
 	{
 		p->~pool_t();
 		++p;
 	}
-	sys::xfree(pools_);
+	sys::xfree(pools_, sizeof(pool_t) * POOLS_COUNT );
 }
 
 BOOST_FORCEINLINE void* object_allocator::malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size) const
@@ -328,7 +324,7 @@ object::~object() BOOST_NOEXCEPT_OR_NOTHROW
 
 void* object::operator new(std::size_t bytes) BOOST_THROWS(std::bad_alloc)
 {
-	register void* result = NULL;
+	void* result = NULL;
 	if(bytes <= MAX_SIZE) {
 		result = detail::object_allocator::instance()->malloc(bytes);
 		if( ! result ) {

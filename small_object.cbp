@@ -43,6 +43,7 @@
 				<Option createDefFile="1" />
 				<Compiler>
 					<Add option="-march=corei7" />
+					<Add option="-fexpensive-optimizations" />
 					<Add option="-O3" />
 					<Add option="-Wall" />
 					<Add option="-fno-exceptions" />
@@ -71,7 +72,6 @@
 					<Add option="-Wall" />
 					<Add option="-pg" />
 					<Add option="-g" />
-					<Add option="-std=gnu++14" />
 					<Add option="-Og" />
 					<Add directory="include" />
 					<Add directory="include/posix" />
@@ -93,7 +93,7 @@
 				<Compiler>
 					<Add option="-march=corei7" />
 					<Add option="-fexpensive-optimizations" />
-					<Add option="-Os" />
+					<Add option="-O3" />
 					<Add option="-Wextra" />
 					<Add option="-Wall" />
 					<Add option="-fno-exceptions" />
@@ -111,9 +111,9 @@
 			<Target title="release-clang-unix-amd64">
 				<Option platforms="Unix;" />
 				<Option output="bin/release-clang-unix-amd64/small_object" prefix_auto="1" extension_auto="1" />
-				<Option working_dir="bin/release-clang-unix-amd64" />
+				<Option working_dir="" />
 				<Option object_output="obj/release-clang-unix-amd64" />
-				<Option type="3" />
+				<Option type="2" />
 				<Option compiler="clang" />
 				<Option createDefFile="1" />
 				<Option projectCompilerOptionsRelation="1" />
