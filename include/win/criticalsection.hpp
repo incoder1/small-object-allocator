@@ -2,7 +2,7 @@
 #define __SMALL_OBJECT_WIN_CRITICALSECTION_HPP_INCLUDED__
 
 #ifndef _SOBJ_SPINCOUNT
-#	define	_SOBJ_SPINCOUNT 512
+#	define	_SOBJ_SPINCOUNT 4000
 #endif
 
 #include <boost/noncopyable.hpp>

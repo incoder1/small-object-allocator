@@ -11,12 +11,12 @@
 #include <boost/exception/exception.hpp>
 
 #include <boost/thread/locks.hpp>
-#include <boost/thread/shared_mutex.hpp>
 #include <boost/thread/thread.hpp>
 #include <boost/thread/tss.hpp>
 
-#include "sys_allocator.hpp"
 #include "critical_section.hpp"
+#include "sys_allocator.hpp"
+#include "range_map.hpp"
 
 #ifndef BOOST_THROWS
 #	ifdef BOOST_NO_CXX11_NOEXCEPT
@@ -70,6 +70,14 @@ public:
 		return MAX_BLOCKS == free_blocks_;
 	}
 
+	BOOST_FORCEINLINE const uint8_t* begin() {
+		return begin_;
+	}
+
+	BOOST_FORCEINLINE const uint8_t* end() {
+		return end_;
+	}
+
 private:
 	uint8_t position_;
 	uint8_t free_blocks_;
@@ -92,13 +100,27 @@ public:
 #endif // BOOST_WINDOWS
 };
 
+    struct byte_ptr_less : public std::binary_function<uint8_t*, uint8_t*, bool>
+    {
+      BOOST_CONSTEXPR bool operator()(const uint8_t* lsh, const uint8_t* rhs) const {
+      	return lsh < rhs;
+	  }
+    };
+
+
 /**
  * \brief Allocates only a signle memory block of the same size
  */
 class arena: public _internal {
 BOOST_MOVABLE_BUT_NOT_COPYABLE(arena)
 private:
-	typedef std::list<chunk*, sys::allocator<chunk*> > vchunks;
+	typedef range_map<
+			const uint8_t*,
+			chunk*,
+			byte_ptr_less,
+			sys::allocator< movable_pair< const range<uint8_t*, byte_ptr_less >, chunk* > >
+			> chunks_rmap;
+	typedef chunks_rmap::range_type byte_ptr_range;
 public:
 	/// Constructs new arena of specific block size
 	explicit arena(const std::size_t block_size);
@@ -112,9 +134,13 @@ public:
 	*/
 	inline bool free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr) BOOST_NOEXCEPT_OR_NOTHROW;
 
-	BOOST_FORCEINLINE reserve() BOOST_NOEXCEPT_OR_NOTHROW
+	inline bool reserve() BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		return !reserved_.exchange(true, boost::memory_order_acquire);
+		bool result = reserved();
+		if(!result) {
+			return reserved_.exchange(true, boost::memory_order_acquire);
+		}
+		return false;
 	}
 
 	BOOST_FORCEINLINE bool reserved() BOOST_NOEXCEPT_OR_NOTHROW
@@ -134,11 +160,11 @@ private:
 	void shrink() BOOST_NOEXCEPT_OR_NOTHROW;
 private:
 	const std::size_t block_size_;
-	vchunks chunks_;
+	chunks_rmap chunks_;
 	chunk* alloc_current_;
 	chunk* free_current_;
-	sys::critical_section mtx_;
 	boost::atomic_bool reserved_;
+	std::size_t free_chunks_;
 };
 
 

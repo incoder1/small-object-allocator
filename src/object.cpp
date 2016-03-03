@@ -71,38 +71,31 @@ arena::arena(const std::size_t block_size):
 	chunks_(),
 	alloc_current_(NULL),
 	free_current_(NULL),
-	reserved_(false)
+	reserved_(false),
+	free_chunks_(0)
 {
 	chunk* first = create_new_chunk( block_size_ );
 	alloc_current_ = first;
 	free_current_  = first;
-	chunks_.push_back(first);
+	chunks_.insert( first->begin(),  first->end(), BOOST_MOVE_BASE(chunk*,first) );
 }
 
 arena::~arena() BOOST_NOEXCEPT_OR_NOTHROW
 {
-	for(vchunks::iterator it= chunks_.begin(); it != chunks_.end(); ++it) {
-		release_chunk(*it, block_size_ );
+	for(chunks_rmap::iterator it= chunks_.begin(); it != chunks_.end(); ++it) {
+		release_chunk( it->second , block_size_ );
 	}
-}
-
-BOOST_FORCEINLINE uint8_t* arena::try_to_alloc(chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW
-{
-	uint8_t *result = NULL;
-	boost::unique_lock<sys::critical_section> lock(mtx_);
-	result = cnk->allocate(block_size_);
-	return result;
 }
 
 void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_alloc)
 {
 	chunk* current = alloc_current_;
-	uint8_t* result = try_to_alloc(current);
+	uint8_t* result = current->allocate(block_size_);
 	if(!result) {
-		vchunks::const_iterator it = chunks_.cbegin();
-		while( it != chunks_.cend() ) {
-			current = *it;
-			result = try_to_alloc(current);
+		chunks_rmap::iterator it = chunks_.begin();
+		while( it != chunks_.end() ) {
+			current = it->second;
+			result = current->allocate(block_size_);
 			if(result) {
 				alloc_current_ = current;
 				break;
@@ -114,8 +107,7 @@ void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_all
 	if(!result) {
 		current = create_new_chunk(block_size_);
 		result = current->allocate(block_size_);
-		boost::unique_lock<sys::critical_section> lock(mtx_);
-		chunks_.push_front(current);
+		chunks_.insert(current->begin(), current->end(), BOOST_MOVE_BASE(chunk*,current) );
 		alloc_current_ = current;
 		free_current_ = current;
 	}
@@ -124,9 +116,13 @@ void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_all
 
 inline bool arena::try_to_free(const uint8_t* ptr, chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW
 {
-	boost::unique_lock<sys::critical_section> lock(mtx_);
 	bool result = cnk->release(ptr,block_size_);
-	if(result) free_current_ = cnk;
+	if(result) {
+		free_current_ = cnk;
+		if( cnk->empty() ) {
+            ++free_chunks_;
+		}
+	}
 	return result;
 }
 
@@ -135,50 +131,40 @@ bool arena::free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr) BOOST_NOEXCEP
 	const uint8_t *p = static_cast<const uint8_t*>(ptr);
 	chunk* current = free_current_;
 	bool result = try_to_free(p, current);
-	std::size_t empties = 0;
 	if(!result) {
-		vchunks::const_iterator it = chunks_.begin();
-		while( it != chunks_.end() ) {
-			current = *it;
-			if(current->empty()) ++empties;
-			result = try_to_free(p, current);
-			if(result) {
-				break;
-			}
-			++it;
+		chunks_rmap::iterator it = chunks_.find(p);
+		if( it != chunks_.end() ) {
+			current = it->second;
+			try_to_free(p,current);
+			result = true;
+			free_current_ = current;
 		}
-		// neeed shrink
-		if(empties > 2 ) {
+		if(free_chunks_ > 2) {
 			shrink();
 		}
 	}
 	return result;
 }
 
-void arena::shrink() BOOST_NOEXCEPT_OR_NOTHROW
-{
-	vchunks shinks;
-	std::size_t empties = 0;
+void arena::shrink() BOOST_NOEXCEPT_OR_NOTHROW {
+	chunks_rmap::iterator it = chunks_.begin();
+	chunks_rmap::iterator end = chunks_.end();
+	free_chunks_ = 0;
+	while(it != end)
 	{
-		vchunks::iterator it= chunks_.begin();
-		do  {
-			if( (*it)->empty() && ++empties > 2 ) {
-				shinks.push_back(*it);
-				vchunks::iterator tmp = it;
+		if( it->second->empty() ) {
+			if(++free_chunks_ > 2) {
+				chunks_rmap::iterator rit = it;
 				++it;
-				boost::unique_lock<sys::critical_section> lock(mtx_);
-				chunks_.erase(tmp);
+				chunks_.erase(rit);
 			} else {
 				++it;
 			}
-		} while(it != chunks_.end() );
-		boost::unique_lock<sys::critical_section> lock(mtx_);
-		alloc_current_ = *chunks_.begin();
-		free_current_ = alloc_current_;
+		} else {
+			++it;
+		}
 	}
-	for(vchunks::const_iterator it= shinks.cbegin(); it != shinks.cend(); ++it) {
-		release_chunk(*it, block_size_);
-	}
+	free_chunks_ = 2;
 }
 
 // poll
@@ -239,11 +225,12 @@ BOOST_FORCEINLINE void pool::free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const 
 	bool released = arena_->free(ptr);
 	// handle allocation from another thread
 	while(!released) {
-		boost::shared_lock<boost::shared_mutex> lock(mtx_);
+		boost::upgrade_lock<boost::shared_mutex> lock(this->mtx_);
 		arenas_pool::const_iterator it = arenas_.cbegin();
 		arenas_pool::const_iterator end = arenas_.cend();
 		while(it != end) {
 			assert(*it);
+			boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
 			released = (*it)->free(ptr);
 			++it;
 		}

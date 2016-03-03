@@ -7,6 +7,9 @@
 #pragma once
 #endif // BOOST_HAS_PRAGMA_ONCE
 
+#include <boost/pool/pool_alloc.hpp>
+#include "critical_section.hpp"
+
 #if defined(_WIN32) || defined(_WIN64)
 #	include "win/heapallocator.hpp"
 #elif defined(BOOST_POSIX_API) && !defined(_WIN32) && !defined(_WIN64)
@@ -27,90 +30,47 @@ BOOST_FORCEINLINE void xfree(void * const ptr) {
 
 #endif
 
-#include <limits>
-
 namespace boost { namespace smallobject { namespace sys {
 
-template<typename T>
-class allocator {
-public :
-    //    typedefs
-    typedef T value_type;
-    typedef value_type* pointer;
-    typedef const value_type* const_pointer;
-    typedef value_type& reference;
-    typedef const value_type& const_reference;
-    typedef std::size_t size_type;
-    typedef std::ptrdiff_t difference_type;
+struct user_allocator_xmalloc
+{
+  typedef std::size_t size_type; //!< An unsigned integral type that can represent the size of the largest object to be allocated.
+  typedef std::ptrdiff_t difference_type; //!< A signed integral type that can represent the difference of any two pointers.
 
-public :
-    //    convert an allocator<T> to allocator<U>
-    template<typename U>
-    struct rebind {
-        typedef allocator<U> other;
-    };
+  static char * malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const size_type bytes)
+  { //! Attempts to allocate n bytes from the system. Returns 0 if out-of-memory
+    return static_cast<char*>(xmalloc(bytes));
+  }
+  static void free BOOST_PREVENT_MACRO_SUBSTITUTION(char * const block)
+  { //! Attempts to de-allocate block.
+    //! \pre Block must have been previously returned from a call to UserAllocator::malloc.
+	xfree(block);
+  }
+};
 
-public :
-    inline explicit allocator()
-    {}
+#define __BSM_INTERNAL_POOL_NEXT_SIZE 256
+#define __BSM_INTERNAL_POOL_MAX_SIZE 512
 
-    inline ~allocator()
-    {}
-
-    inline explicit allocator(allocator const&)
-    {}
-
-    template<typename U>
-    inline explicit allocator(allocator<U> const&)
-    {}
-
-    //    address
-    inline pointer address(reference r) {
-    	 return &r;
-	}
-
-    inline const_pointer address(const_reference r) {
-    	return &r;
-	}
-
-    //    memory allocation
-    inline pointer allocate(size_type cnt, typename std::allocator<void>::const_pointer = 0)
-    {
-    	void * ptr = boost::smallobject::sys::xmalloc( cnt * sizeof(T) );
-		return static_cast<pointer>( ptr );
-    }
-
-    inline void deallocate(pointer p, size_type cnt)
-    {
-        boost::smallobject::sys::xfree( p, cnt);
-    }
-
-    //    size
-    inline size_type max_size() const
-    {
-        return std::numeric_limits<size_type>::max() / sizeof(T);
-	}
-
-    //    construction/destruction
-    inline void construct(pointer p, const T& t)
-    {
-		new(p) T(t);
-	}
-
-    inline void destroy(pointer p)
-    {
-    	p->~T();
-	}
-
-    inline bool operator==(allocator const&)
-    {
-    	return true;
-	}
-
-    inline bool operator!=(allocator const& a)
-    {
-    	return !operator==(a);
-	}
+template<typename _DataType>
+class allocator:public
+	boost::fast_pool_allocator<
+		_DataType,
+		user_allocator_xmalloc,
+		critical_section,
+		__BSM_INTERNAL_POOL_NEXT_SIZE,
+		__BSM_INTERNAL_POOL_MAX_SIZE>
+{
+private:
+	typedef	boost::fast_pool_allocator<
+		_DataType,
+		user_allocator_xmalloc,
+		critical_section,
+		__BSM_INTERNAL_POOL_NEXT_SIZE,
+		__BSM_INTERNAL_POOL_MAX_SIZE> base_type;
+public:
+	allocator():
+		base_type()
+	{}
 };
 
 }}} /// namespace boost { namespace smallobject { namespace sys
