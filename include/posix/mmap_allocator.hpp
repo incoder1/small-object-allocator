@@ -1,11 +1,12 @@
 #ifndef __POSIX_MMAP_ALLOC_HPP_INCLUDED__
 #define __POSIX_MMAP_ALLOC_HPP_INCLUDED__
 
+#include <boost/throw_exception.hpp>
+
 #include <unistd.h>
 #include <sys/mman.h>
 
-namespace boost { namespace smallobject { namespace sys {
-
+namespace smallobject { namespace sys {
 
 inline void* xmalloc(std::size_t size)
 {
@@ -29,6 +30,6 @@ BOOST_FORCEINLINE void xfree(void * const ptr, const std::size_t size)
     ::munmap( ptr, size);
 }
 
-}}} /// namespace boost { namespace smallobject { namespace sys
+}} /// namespace smallobject { namespace sys
 
 #endif // __POSIX_MMAP_ALLOC_HPP_INCLUDED__

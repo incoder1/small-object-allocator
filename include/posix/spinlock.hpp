@@ -4,7 +4,7 @@
 #include <boost/noncopyable.hpp>
 #include <pthread.h>
 
-namespace boost { namespace smallobject { namespace sys {
+namespace smallobject { namespace sys {
 
 class critical_section:private boost::noncopyable
 {
@@ -33,6 +33,6 @@ class critical_section:private boost::noncopyable
 		::pthread_spinlock_t sl_;
 };
 
-}}} /// namespace boost { namespace smallobject { namespace sys
+}} // namespace smallobject { namespace sys
 
 #endif // __SMALLOBJECT_UNIX_SPINLOCK_HPP_INCLUDED__

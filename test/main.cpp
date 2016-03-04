@@ -136,7 +136,7 @@ BOOST_DECLARE_OBJECT_PTR_T(Panel);
 BOOST_DECLARE_OBJECT_PTR_T(Button);
 
 static const int THREADS = boost::thread::hardware_concurrency()*2;
-static const int OBJECTS_COUNT = 1000000;
+static const int OBJECTS_COUNT = 100;
 static const int OBJECTS_VECTOR_SIZE = 32;
 static const int TESTS_COUNT = 3;
 
@@ -240,29 +240,30 @@ void memory_cache_make() {
 
 int main(int argc, const char** argv)
 {
-	std::cout<<"Banchmarks testing objects:"<<std::endl;
-	std::cout<<"Small object  std new/delete"<<std::endl;
-	std::cout<<"Widget: " << sizeof(Widget) <<"    MyWidget: " << sizeof(MyWidget) <<" bytes" << std::endl;
-	std::cout<<"Button: " << sizeof(Button) <<"    MyButton: " << sizeof(MyButton) <<" bytes" << std::endl;
-	std::cout<<"Panel:  " <<  sizeof(Panel) <<"    MyPanel : " << sizeof(MyPanel) <<" bytes" << std::endl << std::endl;
-	memory_cache_make();
-	// Single thread benchmark
-	std::cout<<"Single threading benchmark"<<std::endl;
-	std::cout<<"Running LibC benchmark"<<std::endl;
-	boost::atomic_thread_fence(boost::memory_order_release);
-	double libc_total = run_benchmarks(single_thread_benchmark, libc_routine);
-	std::cout<<"Running SO benchmark"<<std::endl;
-	boost::atomic_thread_fence(boost::memory_order_release);
-	double so_total = run_benchmarks(single_thread_benchmark, so_routine);
-	print_benchmarks_result("single", libc_total, so_total);
+	 run_benchmarks(multi_threads_benchmark, so_routine);
+//	std::cout<<"Banchmarks testing objects:"<<std::endl;
+//	std::cout<<"Small object  std new/delete"<<std::endl;
+//	std::cout<<"Widget: " << sizeof(Widget) <<"    MyWidget: " << sizeof(MyWidget) <<" bytes" << std::endl;
+//	std::cout<<"Button: " << sizeof(Button) <<"    MyButton: " << sizeof(MyButton) <<" bytes" << std::endl;
+//	std::cout<<"Panel:  " <<  sizeof(Panel) <<"    MyPanel : " << sizeof(MyPanel) <<" bytes" << std::endl << std::endl;
+//	memory_cache_make();
+//	// Single thread benchmark
+//	std::cout<<"Single threading benchmark"<<std::endl;
+//	std::cout<<"Running LibC benchmark"<<std::endl;
+//	boost::atomic_thread_fence(boost::memory_order_release);
+//	double libc_total = run_benchmarks(single_thread_benchmark, libc_routine);
+//	std::cout<<"Running SO benchmark"<<std::endl;
+//	boost::atomic_thread_fence(boost::memory_order_release);
+//	double so_total = run_benchmarks(single_thread_benchmark, so_routine);
+//	print_benchmarks_result("single", libc_total, so_total);
 
-	std::cout<<std::endl<<"Multi threading with " << THREADS << " threads benchmark"<<std::endl;
-	boost::atomic_thread_fence(boost::memory_order_release);
-	std::cout<<"Running LibC benchmark"<<std::endl;
-	libc_total = run_benchmarks(multi_threads_benchmark, libc_routine);
-	boost::atomic_thread_fence(boost::memory_order_release);
-	std::cout<<"Running SO benchmark"<<std::endl;
-	so_total = run_benchmarks(multi_threads_benchmark, so_routine);
-	print_benchmarks_result("multi", libc_total, so_total);
+//	std::cout<<std::endl<<"Multi threading with " << THREADS << " threads benchmark"<<std::endl;
+//	boost::atomic_thread_fence(boost::memory_order_release);
+//	std::cout<<"Running LibC benchmark"<<std::endl;
+//	libc_total = run_benchmarks(multi_threads_benchmark, libc_routine);
+//	boost::atomic_thread_fence(boost::memory_order_release);
+//	std::cout<<"Running SO benchmark"<<std::endl;
+//	so_total = run_benchmarks(multi_threads_benchmark, so_routine);
+//	print_benchmarks_result("multi", libc_total, so_total);
 	return 0;
 }

@@ -18,7 +18,7 @@
 
 #include "rw_barier.hpp"
 
-namespace boost { namespace smallobject {
+namespace smallobject {
 
 template<typename K, class C = std::less<const K> >
 class range {
@@ -741,6 +741,6 @@ private:
 	sys::read_write_barier mtx_;
 };
 
-} } // namesapce boost namespace smallobject
+} // { namespace smallobject
 
 #endif // __SMALL_OBJECT_RANGE_MAP_HPP_INCLUDED__

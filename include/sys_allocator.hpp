@@ -2,38 +2,37 @@
 #define __SYS_ALOC_ONCE__
 
 #include <boost/config.hpp>
+#include <boost/pool/pool_alloc.hpp>
+
+#ifdef BOOST_WINDOWS
+#	include "win/heapallocator.hpp"
+#elif defined(BOOST_POSIX_API) && !defined(BOOST_WINDOWS)
+#	include "posix/mmap_allocator.hpp"
+#endif // defined
+
+#include "critical_section.hpp"
 
 #ifdef BOOST_HAS_PRAGMA_ONCE
 #pragma once
 #endif // BOOST_HAS_PRAGMA_ONCE
 
-#include <boost/pool/pool_alloc.hpp>
-#include "critical_section.hpp"
+namespace smallobject { namespace sys {
 
-#if defined(_WIN32) || defined(_WIN64)
-#	include "win/heapallocator.hpp"
-#elif defined(BOOST_POSIX_API) && !defined(_WIN32) && !defined(_WIN64)
-#	include "posix/mmap_allocator.hpp"
-#else
-
-namespace boost { namespace smallobject { namespace sys {
-
+#if !defined(BOOST_WINDOWS) && !defined(BOOST_POSIX_API)
 BOOST_FORCEINLINE void* xmalloc(const std::size_t size) {
 	return ::malloc(size);
 }
-
-BOOST_FORCEINLINE void xfree(void * const ptr,const std::size_t size) {
+BOOST_FORCEINLINE void xfree(void * const ptr,const std::size_t size = 0) {
     ::free(ptr);
 }
+#endif // !defined(BOOST_WINDOWS) && !defined(BOOST_POSIX_API)
 
-}}} // namespace boost { namespace smallobject { namespace sys
+#ifdef BOOST_POSIX_API
+typedef boost::default_user_allocator_malloc_free user_allocator;
+#endif // BOOST_WINDOWS
 
-#endif
-
-namespace boost { namespace smallobject { namespace sys {
-
-#if defined(_WIN32) || defined(_WIN64)
-struct user_allocator_xmalloc
+#ifndef BOOST_POSIX_API
+struct user_allocator
 {
   typedef std::size_t size_type; //!< An unsigned integral type that can represent the size of the largest object to be allocated.
   typedef std::ptrdiff_t difference_type; //!< A signed integral type that can represent the difference of any two pointers.
@@ -45,38 +44,38 @@ struct user_allocator_xmalloc
   static void free BOOST_PREVENT_MACRO_SUBSTITUTION(char * const block)
   { //! Attempts to de-allocate block.
     //! \pre Block must have been previously returned from a call to UserAllocator::malloc.
-	xfree(block);
+	xfree(block, 0);
   }
 };
-#else
-typedef boost::default_user_allocator_malloc_free user_allocator_xmalloc;
-#endif // defined
+#endif // !BOOST_POSIX_API
 
-#define __BSM_INTERNAL_POOL_NEXT_SIZE 256
-#define __BSM_INTERNAL_POOL_MAX_SIZE 512
+#ifndef __SM_INTERNAL_POOL_NEXT_SIZE
+#	define __SM_SYS_POOL_NEXT_SIZE 256
+#	define __SM_SYS_POOL_MAX_SIZE 512
+#endif // __SM_INTERNAL_POOL_NEXT_SIZE
 
 template<typename _DataType>
 class allocator:public
 	boost::fast_pool_allocator<
 		_DataType,
-		user_allocator_xmalloc,
-		critical_section,
-		__BSM_INTERNAL_POOL_NEXT_SIZE,
-		__BSM_INTERNAL_POOL_MAX_SIZE>
+		smallobject::sys::user_allocator,
+		smallobject::sys::critical_section,
+		__SM_SYS_POOL_NEXT_SIZE,
+		__SM_SYS_POOL_MAX_SIZE>
 {
 private:
 	typedef	boost::fast_pool_allocator<
 		_DataType,
-		user_allocator_xmalloc,
-		critical_section,
-		__BSM_INTERNAL_POOL_NEXT_SIZE,
-		__BSM_INTERNAL_POOL_MAX_SIZE> base_type;
+		smallobject::sys::user_allocator,
+		smallobject::sys::critical_section,
+		__SM_SYS_POOL_NEXT_SIZE,
+		__SM_SYS_POOL_MAX_SIZE> base_type;
 public:
 	allocator():
 		base_type()
 	{}
 };
 
-}}} /// namespace boost { namespace smallobject { namespace sys
+}} /// namespace smallobject { namespace sys
 
 #endif // __SYS_ALOC_ONCE__

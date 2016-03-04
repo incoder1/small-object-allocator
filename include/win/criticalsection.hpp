@@ -1,14 +1,20 @@
 #ifndef __SMALL_OBJECT_WIN_CRITICALSECTION_HPP_INCLUDED__
 #define __SMALL_OBJECT_WIN_CRITICALSECTION_HPP_INCLUDED__
 
+#include <boost/config.hpp>
+#include <boost/thread/locks.hpp>
+#include <boost/noncopyable.hpp>
+#include <windows.h>
+
+#ifdef BOOST_HAS_PRAGMA_ONCE
+#pragma once
+#endif // BOOST_HAS_PRAGMA_ONCE
+
 #ifndef _SOBJ_SPINCOUNT
 #	define	_SOBJ_SPINCOUNT 4000
 #endif
 
-#include <boost/noncopyable.hpp>
-#include <windows.h>
-
-namespace boost { namespace smallobject { namespace sys {
+namespace smallobject { namespace sys {
 
 class critical_section:private boost::noncopyable
 {
@@ -37,6 +43,10 @@ class critical_section:private boost::noncopyable
 		::CRITICAL_SECTION cs_;
 };
 
-}}} /// namespace boost { namespace smallobject { namespace sys
+}  // namespace smallobject
+
+typedef boost::unique_lock<sys::critical_section> unique_lock;
+
+} //  { namespace sys
 
 #endif // __SMALL_OBJECT_WIN_CRITICALSECTION_HPP_INCLUDED__
