@@ -5,16 +5,15 @@
 
 #include <boost/atomic.hpp>
 #include <boost/move/move.hpp>
+#include <boost/thread/thread.hpp>
 
 #ifndef _SOBJ_SPINCOUNT
 #	define	_SOBJ_SPINCOUNT 4000
 #endif
 
-namespace boost {
+namespace smallobject {
 
 namespace detail {
-
-using namespace boost::atomics;
 
 template<typename E>
 class list_node {
@@ -33,7 +32,7 @@ public:
 	list_node(BOOST_FWD_REF(E) e):
 		element_( BOOST_MOVE_BASE(E,e) ),
 		prev_(NULL),
-		next_(NULL),
+		next_(NULL)
 	{}
 
 	~list_node()
@@ -59,7 +58,7 @@ public:
 	}
 
 	inline const E* element() const BOOST_NOEXCEPT_OR_NOTHROW {
-		return element_;
+		return &element_;
 	}
 private:
 	const E element_;
@@ -75,7 +74,7 @@ public:
 	typedef typename node_type::value_type value_type;
 	typedef const value_type& reference;
 	typedef ptrdiff_t difference_type;
-	typedef std::iterator_tag iterator_category;
+	typedef std::forward_iterator_tag iterator_category;
 
 	list_iterator(node_type* const node) BOOST_NOEXCEPT_OR_NOTHROW:
 		node_(node)
@@ -143,7 +142,7 @@ public:
 	typedef typename node_type::value_type   value_type;
 	typedef const value_type&                reference;
 	typedef ptrdiff_t                        difference_type;
-	typedef std::iterator_tag       iterator_category;
+	typedef std::forward_iterator_tag iterator_category;
 
 	explicit list_const_iterator(const node_type* n)  BOOST_NOEXCEPT_OR_NOTHROW:
 		node_( const_cast<node_type*>(n) )
@@ -255,12 +254,12 @@ public:
 
 	~list() BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		do_detroy_list();
+		do_destroy_list();
 	}
 
 	inline bool empty() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		return NULL == head_.load(memory_order_seq_cst);
+		return NULL == head_.load(boost::memory_order_seq_cst);
 	}
 
 	template <class _input_iterator>
@@ -276,8 +275,24 @@ public:
 		return iterator( position.node() );
 	}
 
+	void push_front(BOOST_FWD_REF(E) element) {
+		node_type *new_node = create_node( boost::forward<E>(element) );
+		node_type *old_head = NULL;
+		std::size_t spin_count = 0;
+		for(;;){
+			old_head = head_.load(boost::memory_order_relaxed);
+			old_head->exhange_prev(new_node);
+			new_node->exchange_next(old_head);
+			if(head_.compare_exchange_weak(old_head, new_node, boost::memory_order::memory_order_release, boost::memory_order_relaxed) ) {
+				boost::atomic_thread_fence(boost::memory_order_acquire);
+				break;
+			}
+			do_await(spin_count);
+		};
+	}
+
 	iterator begin() BOOST_NOEXCEPT_OR_NOTHROW {
-		return iterator( head_.load(memory_order_seq_cst) );
+		return iterator( head_.load(boost::memory_order_seq_cst) );
 	}
 
 	iterator end() BOOST_NOEXCEPT_OR_NOTHROW {
@@ -286,7 +301,7 @@ public:
 
 	const_iterator cbegin() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		return const_iterator( head_.load(memory_order_seq_cst) );
+		return const_iterator( head_.load(boost::memory_order_seq_cst) );
 	}
 
 	const_iterator cend() const BOOST_NOEXCEPT_OR_NOTHROW
@@ -313,7 +328,7 @@ private:
 		if(NULL != old_prev) {
 			// exchange prev first
 			std::size_t spin_count = 0;
-			while( !node->exchange_prev(old_prev) )
+			while( !node->exchange_prev(old_prev) ) {
 				do_await(spin_count);
 				old_prev = node->prev();
 			}
@@ -330,10 +345,10 @@ private:
 	}
 
 	void do_destroy_list() {
-		node_type *it = head_.load(memory_order_aquare);
-		head_.store(NULL, memory_order_release);
-		size_.load(memory_order_aquare);
-		size_.store(memory_order_release);
+		node_type *it = head_.load(boost::memory_order_acquire);
+		head_.store(NULL, boost::memory_order_release);
+		size_.load(boost::memory_order_acquire);
+		size_.store(boost::memory_order_release);
 
 		node_type *tmp;
 		while(NULL != it)
@@ -346,7 +361,7 @@ private:
 
 	inline node_type *create_node(BOOST_FWD_REF(E) e) {
 		node_type* ptr = node_allocator_.allocate(1);
-		return new static_cast<void*>(ptr) node_type( boost::forward<E>(e) );
+		return new (static_cast<void*>(ptr)) node_type( boost::forward<E>(e) );
 	}
 
 	inline void destroy_node(node_type* const nd) {
@@ -354,11 +369,11 @@ private:
 		node_allocator_.deallocate(nd, 1);
 	}
 private:
-	const node_type* head_;
+	boost::atomic<node_type*> head_;
 	node_allocator node_allocator_;
-	std::atomic_size_t size_;
+	boost::atomic_size_t size_;
 };
 
-} // namespace io
+} // namespace smallobject
 
 #endif // __BOOST_SMALLOBJECT_FORWARD_LIST__

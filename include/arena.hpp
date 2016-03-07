@@ -59,13 +59,13 @@ public:
 	/// \return pointer on allocated memory block of fixed size
 	/// \throw std::bad_alloc in case of system out of memory,
 	/// calls user provided global boost::throw_exception in noexception mode
-	inline void* malloc BOOST_PREVENT_MACRO_SUBSTITUTION();
+	void* malloc BOOST_PREVENT_MACRO_SUBSTITUTION();
 
 	/// Releases previesly allocated block of memory
 	/// do system lock when thread releases memory allocated by another thread
 	/// \param ptr pointer to the allocated memory
 	/// \throw never trows
-	inline bool free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr) BOOST_NOEXCEPT_OR_NOTHROW;
+	bool free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr) BOOST_NOEXCEPT_OR_NOTHROW;
 
 	/// Makes attemp to reserve this arena for thread
 	/// do spinlock

@@ -9,13 +9,16 @@ inline void pool::release_arena(arena* ar) BOOST_NOEXCEPT_OR_NOTHROW
 	ar->release();
 }
 
-pool::pool() BOOST_NOEXCEPT_OR_NOTHROW:
+pool::pool():
 	arena_(&pool::release_arena),
 	mtx_()
 {}
 
 pool::~pool() BOOST_NOEXCEPT_OR_NOTHROW
 {
+	// release arena allocated by current thread
+	arena_.reset();
+	// release all arenas
 	arenas_pool::iterator it= arenas_.begin();
 	arenas_pool::iterator end = arenas_.end();
 	while( it != end ) {
@@ -25,11 +28,10 @@ pool::~pool() BOOST_NOEXCEPT_OR_NOTHROW
 	}
 }
 
-inline arena* pool::reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW
+arena* pool::reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW
 {
 	arena *result = arena_.get();
 	if(!result) {
-		boost::upgrade_lock<boost::shared_mutex> lock(this->mtx_);
 		arenas_pool::iterator it = arenas_.begin();
 		arenas_pool::iterator end = arenas_.end();
 		while(it != end) {
@@ -42,27 +44,19 @@ inline arena* pool::reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW
 		}
 		if(!result) {
 			result = new arena(size);
-			boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
-			arenas_.push_back(result);
-
+			arenas_.push_front( BOOST_MOVE_BASE(arena*, result) );
 		}
 		arena_.reset(result);
 	}
 	return result;
 }
 
-void* pool::malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size)
-{
-	arena *ar = reserve(size);
-	return ar->malloc();
-}
 
-BOOST_FORCEINLINE void pool::free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW
+void pool::free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW
 {
 	bool released = arena_->free(ptr);
 	// handle allocation from another thread
 	while(!released) {
-		boost::shared_lock<boost::shared_mutex> lock(mtx_);
 		arenas_pool::iterator it = arenas_.begin();
 		arenas_pool::iterator end = arenas_.end();
 		while(it != end) {

@@ -16,22 +16,5 @@ chunk::chunk(const uint8_t block_size, const uint8_t* begin) BOOST_NOEXCEPT_OR_N
 	}
 }
 
-inline uint8_t* chunk::allocate(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW {
-	if(0 == free_blocks_) return NULL;
-    uint8_t *result = const_cast<uint8_t*>( begin_ + (position_ * block_size) );
-    position_ = *result;
-    --free_blocks_;
-	return result;
-}
-
-inline bool chunk::release(const uint8_t *ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
-{
-    if( (ptr < begin_) || (ptr > end_) ) return false;
-    *(const_cast<uint8_t*>(ptr)) = position_;
-    position_ =  static_cast<uint8_t>( (ptr - begin_) / block_size );
-    ++free_blocks_;
-    return true;
-}
-
 } } // { namespace smallobject { namespace detail
 

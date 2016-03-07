@@ -1,6 +1,7 @@
 #ifndef __SMALLOBJECT_NONCOPYABLE_HPP_INLUDED__
 #define __SMALLOBJECT_NONCOPYABLE_HPP_INLUDED__
 
+#include <boost/config.hpp>
 #include <boost/noncopyable.hpp>
 
 #include "sys_allocator.hpp"
@@ -19,7 +20,7 @@
 
 namespace smallobject { namespace detail {
 
-#ifdef BOOST_WINDOWS
+#if defined(_WIN32) || defined(_WIN64)
 // windows specific noncopyable base to allocate arena struct data in same pages
 // as allocation blocks to avoild CPU cache misses
 class noncopyable: private boost::noncopyable
@@ -29,9 +30,9 @@ public:
 	{
         return smallobject::sys::xmalloc(size);
 	}
-	void operator delete(void* const ptr, const std::size_t s) BOOST_NOEXCEPT_OR_NOTHROW
+	void operator delete(void* const ptr) BOOST_NOEXCEPT_OR_NOTHROW
 	{
-        smallobject::sys::xfree(ptr, s);
+        smallobject::sys::xfree(ptr, 0);
 	}
 };
 #else
