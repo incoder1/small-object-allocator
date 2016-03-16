@@ -35,10 +35,8 @@ object_allocator::object_allocator():
 {
 	pool* p = static_cast<pool*>(sys::xmalloc(POOLS_COUNT * sizeof(pool) ) );
 	pools_= p;
-	std::size_t pool_size = MIN_SIZE;
 	for(uint8_t i = 0; i < POOLS_COUNT ; i++ ) {
 		p = new (p) pool();
-		pool_size += sizeof(std::size_t);
 		++p;
 	}
 }

@@ -40,7 +40,6 @@ void pool::reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW
 	}
 	if( NULL == arena_.get() ) {
 		arena_.reset( new arena(size) );
-		assert( arena_->reserve() );
 		arenas_.push_front( arena_.get() );
 	}
 }
@@ -55,7 +54,7 @@ void pool::free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEP
 		arenas_pool::iterator end = arenas_.end();
 		while(it != end) {
 			assert(*it);
-			released = (*it)->free(ptr);
+			released = (*it)->synch_free(ptr);
 			++it;
 		}
 	}

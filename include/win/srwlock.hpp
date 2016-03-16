@@ -50,8 +50,6 @@ public:
 	}
 	inline void write_lock() BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		::AcquireSRWLockShared(&barier_);
-		::ReleaseSRWLockShared(&barier_);
 		::AcquireSRWLockExclusive(&barier_);
 	}
 	inline void write_unlock() BOOST_NOEXCEPT_OR_NOTHROW

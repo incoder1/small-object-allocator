@@ -35,11 +35,11 @@ public:
 		barier_.unlock_shared();
 	}
 	inline void write_lock() BOOST_NOEXCEPT_OR_NOTHROW {
-		barier_.lock();
-		barier_.unlock_and_lock_upgrade();
+		barier_.lock_upgrade();
+		barier_.unlock_upgrade_and_lock();
 	}
 	inline void write_unlock() BOOST_NOEXCEPT_OR_NOTHROW {
-		barier_.unlock_upgrade();
+		barier_.unlock();
 	}
 private:
 	boost::shared_mutex barier_;

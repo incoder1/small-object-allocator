@@ -24,8 +24,9 @@ arena::arena(const std::size_t block_size):
 	free_current_(NULL),
 	reserved_(),
 	free_chunks_(1),
-	mtx_()
+	rwb_()
 {
+	reserved_.test_and_set();
 	chunk* first = create_new_chunk( block_size_ );
 	alloc_current_ = first;
 	free_current_  = first;
@@ -41,7 +42,7 @@ arena::~arena() BOOST_NOEXCEPT_OR_NOTHROW
 
 BOOST_FORCEINLINE uint8_t* arena::try_to_alloc(chunk* const chnk) BOOST_NOEXCEPT_OR_NOTHROW
 {
-	unique_lock lock(mtx_);
+	sys::read_lock lock(rwb_);
 	uint8_t *result = chnk->allocate(block_size_);
 	if(NULL != result) {
 		alloc_current_ = chnk;
@@ -69,7 +70,6 @@ void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_all
 	if(NULL == result) {
 		current = create_new_chunk(block_size_);
 		result = current->allocate(block_size_);
-		unique_lock lock(mtx_);
 		chunks_.insert(current->begin(), current->end(), BOOST_MOVE_BASE(chunk*,current) );
 		alloc_current_ = current;
 		free_current_ = current;
@@ -80,7 +80,6 @@ void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_all
 
 inline bool arena::try_to_free(const uint8_t* ptr, chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW
 {
-	unique_lock lock(mtx_);
 	if(cnk->release(ptr,block_size_)) {
 		free_current_ = cnk;
 		if( cnk->empty() ) {
@@ -107,7 +106,7 @@ bool arena::free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr) BOOST_NOEXCEP
 
 
 void arena::shrink() BOOST_NOEXCEPT_OR_NOTHROW {
-	unique_lock lock(mtx_);
+	sys::write_lock lock(rwb_);
 	chunks_rmap::iterator it = chunks_.begin();
 	chunks_rmap::iterator end = chunks_.end();
 	free_chunks_ = 0;

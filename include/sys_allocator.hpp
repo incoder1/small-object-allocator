@@ -31,7 +31,7 @@ BOOST_FORCEINLINE void xfree(void * const ptr,const std::size_t size = 0) {
 typedef boost::default_user_allocator_malloc_free user_allocator;
 #endif // BOOST_WINDOWS
 
-#ifndef BOOST_POSIX_API
+#ifdef BOOST_WINDOWS
 struct user_allocator
 {
   typedef std::size_t size_type; //!< An unsigned integral type that can represent the size of the largest object to be allocated.
@@ -47,7 +47,7 @@ struct user_allocator
 	xfree(block, 0);
   }
 };
-#endif // !BOOST_POSIX_API
+#endif // windows user allocator
 
 #ifndef __SM_INTERNAL_POOL_NEXT_SIZE
 #	define __SM_SYS_POOL_NEXT_SIZE 256

@@ -3,8 +3,10 @@
 
 #include <boost/config.hpp>
 
-//#undef _WIN32_WINNT
-//#define _WIN32_WINNT 0x0600
+#ifdef __MINGW64__
+#undef _WIN32_WINNT
+#define _WIN32_WINNT 0x0600
+#endif // __MINGW64__
 
 #if defined(BOOST_WINDOWS) && (_WIN32_WINNT >= 0x0600)
 #		include "win/srwlock.hpp"

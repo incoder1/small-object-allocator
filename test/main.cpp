@@ -139,7 +139,7 @@ BOOST_DECLARE_OBJECT_PTR_T(Panel);
 BOOST_DECLARE_OBJECT_PTR_T(Button);
 
 static const int THREADS = std::thread::hardware_concurrency();
-static const int OBJECTS_COUNT = 500000;
+static const int OBJECTS_COUNT = 1000000;
 static const int OBJECTS_VECTOR_SIZE = 32;
 static const int TESTS_COUNT = 3;
 

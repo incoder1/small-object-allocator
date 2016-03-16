@@ -26,10 +26,9 @@ private:
 	void reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
 	static inline void release_arena(arena* ar) BOOST_NOEXCEPT_OR_NOTHROW;
 private:
-	typedef list<arena*> arenas_pool;
+	typedef smallobject::list<arena*> arenas_pool;
 	boost::thread_specific_ptr<arena> arena_;
 	arenas_pool arenas_;
-	sys::critical_section mtx_;
 };
 
 }} //  namespace smallobject { namespace detail

@@ -16,6 +16,7 @@
 					<Add option="-Wextra" />
 					<Add option="-Wall" />
 					<Add option="-std=c++11" />
+					<Add option="-pg" />
 					<Add option="-g" />
 					<Add option="-Og" />
 					<Add option="-fexceptions" />
@@ -24,6 +25,7 @@
 					<Add directory="../../jemalloc-4.0.4/include/jemalloc" />
 				</Compiler>
 				<Linker>
+					<Add option="-pg -lgmon" />
 					<Add option="-pg" />
 					<Add library="boost_system-mt-d.dll" />
 					<Add library="boost_thread-mt-d.dll" />

@@ -37,7 +37,7 @@ public:
 	 * \param block_size size of minimal memory block, must be the same for the whole chunk
 	 * \param blocks count of blocks to be allocated in time
 	 */
-	uint8_t* allocate(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
+	inline uint8_t* allocate(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		if (0 == free_blocks_) {
 			return NULL;
@@ -52,7 +52,7 @@ public:
 	 * \param ptr pointer on allocated memory
 	 * \param bloc_size size of minimal allocated block
 	 */
-	bool release(const uint8_t* ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
+	inline bool release(const uint8_t* ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		if( (ptr < begin_) || (ptr > end_) ) return false;
 		*(const_cast<uint8_t*>(ptr)) = position_;

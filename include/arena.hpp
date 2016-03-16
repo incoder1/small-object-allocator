@@ -6,8 +6,8 @@
 
 #include "chunk.hpp"
 #include "noncopyable.hpp"
-#include "critical_section.hpp"
 #include "range_map.hpp"
+#include "rw_barier.hpp"
 
 #ifdef BOOST_HAS_PRAGMA_ONCE
 #pragma once
@@ -37,7 +37,6 @@ struct byte_ptr_less : public std::binary_function<uint8_t*, uint8_t*, bool>
  *  allocated virtual memory
  */
 class arena: public noncopyable {
-BOOST_MOVABLE_BUT_NOT_COPYABLE(arena)
 private:
 	// a free list (free binary search AVL tree)
 	typedef smallobject::range_map<
@@ -71,8 +70,15 @@ public:
 	/// \throw never trows
 	bool free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr) BOOST_NOEXCEPT_OR_NOTHROW;
 
+	/// Synchronized version of free, user when one thread is
+	/// allocating memory, and another releasing it
+	inline bool synch_free(void const *ptr) BOOST_NOEXCEPT_OR_NOTHROW
+	{
+		sys::write_lock lock(rwb_);
+		return free(ptr);
+	}
+
 	/// Makes attemp to reserve this arena for thread
-	/// do spinlock
 	/// \return true if success and false if arena alrady reserved by some thread
 	/// \throw never thows
 	inline bool reserve() BOOST_NOEXCEPT_OR_NOTHROW {
@@ -86,7 +92,6 @@ public:
 	}
 
 	/// Shinks no longer used memory, and returns it back to operating system
-	/// may spinlocks and system locks
 	void shrink() BOOST_NOEXCEPT_OR_NOTHROW;
 
 private:
@@ -100,12 +105,11 @@ private:
 	/// \param size size of fixed memory block
 	static BOOST_FORCEINLINE void release_chunk(chunk* const cnk,const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
 	/// Makes attempt to allocate a memory block of fixed size from chunk
-	/// do spinlock
+	/// do read lock
 	/// \return pointer on allocated memory block if success, otherwise NULL pointer
 	/// \throw never throws
 	BOOST_FORCEINLINE uint8_t* try_to_alloc(chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW;
 	/// Makes attempt to release a memory block of fixed size from chunk
-	/// do spinlock
 	/// \return true whether sucesses, otherwise false
 	BOOST_FORCEINLINE bool try_to_free(const uint8_t* ptr, chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW;
 
@@ -116,7 +120,7 @@ private:
 	chunk* free_current_;
 	boost::atomic_flag reserved_;
 	std::size_t free_chunks_;
-	sys::critical_section mtx_;
+	sys::read_write_barier rwb_;
 };
 
 
