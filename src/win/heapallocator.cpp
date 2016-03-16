@@ -5,15 +5,15 @@ namespace smallobject { namespace sys {
 sys::critical_section heap_allocator::_mtx;
 boost::atomic<heap_allocator*> heap_allocator::_instance(NULL);
 
-const heap_allocator* heap_allocator::instance() {
-	heap_allocator* tmp = _instance.load(boost::memory_order_relaxed);
+heap_allocator* heap_allocator::instance() {
+	heap_allocator* tmp = _instance.load(boost::memory_order_consume);
 	if (!tmp) {
 		unique_lock lock(_mtx);
-		tmp = _instance.load(boost::memory_order_acquire);
+		tmp = _instance.load(boost::memory_order_consume);
 		if (NULL == tmp) {
 			::HANDLE heap = ::HeapCreate( 0, 0, 0);
-			tmp = static_cast<heap_allocator*>( ::HeapAlloc(heap, 0, sizeof(heap_allocator) ) );
-			tmp = new ( static_cast<void*>(tmp) ) heap_allocator(heap);
+			void* ptr = ::HeapAlloc(heap, 0, sizeof(heap_allocator) ) ;
+			tmp = new (ptr) heap_allocator(heap);
 			_instance.store(tmp, boost::memory_order_release);
 			std::atexit(&heap_allocator::release);
 		}
@@ -22,11 +22,12 @@ const heap_allocator* heap_allocator::instance() {
 }
 
 void heap_allocator::release() BOOST_NOEXCEPT_OR_NOTHROW {
-	heap_allocator *al = _instance.load(boost::memory_order_relaxed);
+	heap_allocator *al = _instance.load(boost::memory_order_acquire);
 	::HANDLE heap = al->hHeap_;
 	al->~heap_allocator();
 	::HeapFree(heap, 0, al);
 	::HeapDestroy(heap);
+	_instance.store(NULL, boost::memory_order_release);
 }
 
 }} ///  namespace smallobject { namespace sys

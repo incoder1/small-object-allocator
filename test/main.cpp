@@ -37,10 +37,11 @@ public:
 //		}
 //		return result;
 //	}
-//
+
 //	void operator delete(void* const ptr) BOOST_NOEXCEPT_OR_NOTHROW
 //	{
-//		::je_free(ptr);
+		//::je_free(ptr);
+//		std::free(ptr);
 //	}
 
 private:
@@ -137,8 +138,8 @@ BOOST_DECLARE_OBJECT_PTR_T(Widget);
 BOOST_DECLARE_OBJECT_PTR_T(Panel);
 BOOST_DECLARE_OBJECT_PTR_T(Button);
 
-static const int THREADS = std::thread::hardware_concurrency()*2;
-static const int OBJECTS_COUNT = 250000;
+static const int THREADS = std::thread::hardware_concurrency();
+static const int OBJECTS_COUNT = 500000;
 static const int OBJECTS_VECTOR_SIZE = 32;
 static const int TESTS_COUNT = 3;
 
@@ -239,6 +240,37 @@ void memory_cache_make() {
 	*(int*)dummy = 0xFF;
 	::std::free(dummy);
 }
+
+//typedef smallobject::list<int> intlist;
+//typedef intlist::const_iterator cit;
+//
+//void test_erase(intlist* lst)
+//{
+//	for(int i=0; i < 4; i++) {
+//		lst->push_front( i+200 );
+//	}
+//	cit it = lst->cbegin();
+//	for(int i=0; i < 4; i++) {
+//		lst->erase( ++it );
+//	}
+//}
+//
+//void test_linked_list(intlist& lst) {
+//
+//	for(int i=0; i < 10; i++) {
+//		lst.push_front( i );
+//	}
+//	boost::thread thread( boost::bind(test_erase, (intlist*)&lst) );
+//	std::cout<<"concurrent"<<std::endl;
+//	for(int i=0; i < 4; i++) {
+//		lst.push_front( i+100 );
+//	}
+//	thread.join();
+//	std::cout<<"lockfree"<<std::endl;
+//	for(cit it = lst.cbegin(); it != lst.cend(); ++it) {
+//		std::cout<<*it<<',';
+//	}
+//}
 
 int main(int argc, const char** argv)
 {

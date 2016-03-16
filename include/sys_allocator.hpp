@@ -50,18 +50,20 @@ struct user_allocator
 #endif // !BOOST_POSIX_API
 
 #ifndef __SM_INTERNAL_POOL_NEXT_SIZE
-#	define __SM_SYS_POOL_NEXT_SIZE UCHAR_MAX
-#	define __SM_SYS_POOL_MAX_SIZE __SM_SYS_POOL_NEXT_SIZE*2
+#	define __SM_SYS_POOL_NEXT_SIZE 256
+#	define __SM_SYS_POOL_MAX_SIZE 512
 #endif // __SM_INTERNAL_POOL_NEXT_SIZE
 
-template<typename _DataType>
+template<typename _DataType,
+	unsigned NextSize = __SM_SYS_POOL_NEXT_SIZE ,
+	unsigned MaxSize = __SM_SYS_POOL_MAX_SIZE >
 class allocator:public
 	boost::fast_pool_allocator<
 		_DataType,
 		smallobject::sys::user_allocator,
 		smallobject::sys::critical_section,
-		__SM_SYS_POOL_NEXT_SIZE,
-		__SM_SYS_POOL_MAX_SIZE>
+		NextSize,
+		MaxSize>
 {
 private:
 	typedef	boost::fast_pool_allocator<

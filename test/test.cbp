@@ -13,21 +13,21 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
-					<Add option="-std=c++11" />
 					<Add option="-Wextra" />
 					<Add option="-Wall" />
-					<Add option="-pg" />
+					<Add option="-std=c++11" />
 					<Add option="-g" />
 					<Add option="-Og" />
 					<Add option="-fexceptions" />
 					<Add directory="D:/cpp/boost_1_60_0" />
 					<Add directory="include" />
+					<Add directory="../../jemalloc-4.0.4/include/jemalloc" />
 				</Compiler>
 				<Linker>
 					<Add option="-pg" />
-					<Add option="-pg -lgmon" />
 					<Add library="boost_system-mt-d.dll" />
 					<Add library="boost_thread-mt-d.dll" />
+					<Add library="D:/cpp/jemalloc-4.0.4/lib/jemalloc_s.lib" />
 					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
 					<Add directory="../bin/debug-win-gcc-x64" />
 				</Linker>

@@ -1,12 +1,27 @@
 #ifndef __SMALLOBJECT_SRWLOCK_HPP_INCLUDED__
 #define __SMALLOBJECT_SRWLOCK_HPP_INCLUDED__
 
-#include <boost/config.hpp>
-#include <windows.h>
-
 #if _WIN32_WINNT < 0x0600
 #error "SWRLock can be used only on Windows Vista +"
 #endif // _WIN32_WINNT
+
+#include <boost/config.hpp>
+
+#include <windows.h>
+
+#ifdef __MINGW64__
+typedef RTL_SRWLOCK SRWLOCK, *PSRWLOCK;
+extern "C" {
+  WINBASEAPI VOID WINAPI InitializeSRWLock (PSRWLOCK SRWLock);
+  VOID WINAPI ReleaseSRWLockExclusive (PSRWLOCK SRWLock);
+  VOID WINAPI ReleaseSRWLockShared (PSRWLOCK SRWLock);
+  VOID WINAPI AcquireSRWLockExclusive (PSRWLOCK SRWLock);
+  VOID WINAPI AcquireSRWLockShared (PSRWLOCK SRWLock);
+  WINBASEAPI BOOLEAN WINAPI TryAcquireSRWLockExclusive (PSRWLOCK SRWLock);
+  WINBASEAPI BOOLEAN WINAPI TryAcquireSRWLockShared (PSRWLOCK SRWLock);
+}
+#endif // __MINGW64__
+
 
 namespace smallobject { namespace sys {
 
@@ -35,6 +50,8 @@ public:
 	}
 	inline void write_lock() BOOST_NOEXCEPT_OR_NOTHROW
 	{
+		::AcquireSRWLockShared(&barier_);
+		::ReleaseSRWLockShared(&barier_);
 		::AcquireSRWLockExclusive(&barier_);
 	}
 	inline void write_unlock() BOOST_NOEXCEPT_OR_NOTHROW

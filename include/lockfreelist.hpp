@@ -43,18 +43,16 @@ public:
 		return next_.load(boost::memory_order_seq_cst);
 	}
 
-	bool exchange_next(_self* next) BOOST_NOEXCEPT_OR_NOTHROW {
-		_self* old_next = next_.load(boost::memory_order_consume);
-		return next_.compare_exchange_weak(old_next, next, boost::memory_order_release, boost::memory_order_release);
+	inline bool exchange_next(_self* next) BOOST_NOEXCEPT_OR_NOTHROW {
+		return next_.exchange(next, boost::memory_order_acq_rel);
 	}
 
 	inline _self* prev() const BOOST_NOEXCEPT_OR_NOTHROW {
 		return prev_.load(boost::memory_order_seq_cst);
 	}
 
-	bool exhange_prev(_self* prev) BOOST_NOEXCEPT_OR_NOTHROW {
-		_self* old_prev = prev_.load(boost::memory_order_consume);
-		return prev_.compare_exchange_weak(old_prev, prev, boost::memory_order_release, boost::memory_order_release);
+	inline bool exchange_prev(_self* prev) BOOST_NOEXCEPT_OR_NOTHROW {
+		return prev_.exchange(prev, boost::memory_order_acq_rel);
 	}
 
 	inline const E* element() const BOOST_NOEXCEPT_OR_NOTHROW {
@@ -98,17 +96,17 @@ public:
 
 	inline reference operator*() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		return *const_cast<value_type*>( node_->element() );
+		return *( node_->element() );
 	}
 
 	_self& operator++() BOOST_NOEXCEPT_OR_NOTHROW {
-		node_ = node_->next();
+		node_ = (NULL != node_) ? node_->next() : NULL;
 		return *this;
 	}
 
 	_self operator++(int) BOOST_NOEXCEPT_OR_NOTHROW {
 		_self tmp( *this );
-		node_ = node_->next();
+		node_ = (NULL != node_) ? node_->next() : NULL;
 		return tmp;
 	}
 
@@ -116,16 +114,18 @@ public:
 	{
 		return node_ == rhs.node_;
 	}
+
 	bool operator!=(const _self& rhs) const BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		return node_ != rhs.node_;
 	}
+
 	_self next() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		return node ? _self( node_->next() ) : _self(NULL);
 	}
 
-	inline node_type* node() const BOOST_NOEXCEPT_OR_NOTHROW
+	inline const node_type* node() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		return const_cast<const node_type*>(node_);
 	}
@@ -174,17 +174,17 @@ public:
 
 	reference operator*() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		return node_->element();
+		return *(node_->element());
 	}
 
 	_self& operator++() BOOST_NOEXCEPT_OR_NOTHROW {
-		node_ = node_->next();
+		node_ = (NULL != node_) ? node_->next() : NULL;
 		return *this;
 	}
 
 	_self operator++(int) BOOST_NOEXCEPT_OR_NOTHROW {
 		_self tmp(*this);
-		node_ = node_->next();
+		node_ = (NULL != node_) ? node_->next() : NULL;
 		return tmp;
 	}
 
@@ -200,7 +200,7 @@ public:
 
 	_self next() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		return  node_ ? _self( node_->next() ): _self(NULL);
+		return  NULL != node_ ? _self( node_->next() ): _self(NULL);
 	}
 
 	inline node_type* node() const BOOST_NOEXCEPT_OR_NOTHROW
@@ -236,10 +236,20 @@ inline bool operator==(
 
 } // namespace detail
 
-template<typename E, class A = std::allocator<E> >
+template<typename E, class A = sys::allocator<E> >
 class list {
-	BOOST_MOVABLE_BUT_NOT_COPYABLE(list)
 private:
+#if !defined(BOOST_NO_CXX11_DELETED_FUNCTIONS)
+      list( const list& ) = delete;
+      list& operator=( const list& ) = delete;
+#	ifdef BOOST_HAS_RVALUE_REFS
+      list(list&& ) = delete;
+      list& operator=(list&& ) = delete;
+#	endif // BOOST_HAS_RVALUE_REFS
+#else
+      list( const list& );
+      list& operator=( const list& );
+#endif // no deleted functions
 	typedef detail::list_node<E> node_type;
 	typedef typename A::template rebind<node_type>::other node_allocator;
 public:
@@ -262,17 +272,18 @@ public:
 		return NULL == head_.load(boost::memory_order_seq_cst);
 	}
 
-	template <class _input_iterator>
-	iterator insert(const_iterator position, _input_iterator first, _input_iterator last )
-	{
-		_input_iterator src = last;
-		while(src != last) {
-			insert(position, *src);
-			++src;
-			++position;
-			++size_;
-		}
-		return iterator( position.node() );
+	inline void erase(const const_iterator& position) {
+		if(end() == position) return;
+		do_erase_node( position.node() );
+	}
+
+	inline void erase(const iterator& position) {
+		if(end() == position) return;
+		do_erase_node( position.node() );
+	}
+
+	void push_front(BOOST_COPY_ASSIGN_REF(E) element) {
+		 push_front( BOOST_MOVE_BASE(E,element) );
 	}
 
 	void push_front(BOOST_FWD_REF(E) element) {
@@ -280,11 +291,13 @@ public:
 		node_type *old_head = NULL;
 		std::size_t spin_count = 0;
 		for(;;){
-			old_head = head_.load(boost::memory_order_relaxed);
-			old_head->exhange_prev(new_node);
+			old_head = head_.load(boost::memory_order_consume);
+			if(NULL != old_head) {
+				old_head->exchange_prev(new_node);
+			}
 			new_node->exchange_next(old_head);
-			if(head_.compare_exchange_weak(old_head, new_node, boost::memory_order::memory_order_release, boost::memory_order_relaxed) ) {
-				boost::atomic_thread_fence(boost::memory_order_acquire);
+			if(head_.compare_exchange_weak(old_head, new_node, boost::memory_order_release, boost::memory_order_relaxed) )
+			{
 				break;
 			}
 			do_await(spin_count);
@@ -337,6 +350,7 @@ private:
 		}
 		destroy_node(node);
 	}
+
 	inline void do_await(std::size_t& spin_count) {
 		if(++spin_count > _SOBJ_SPINCOUNT) {
 			boost::this_thread::yield();
@@ -347,8 +361,6 @@ private:
 	void do_destroy_list() {
 		node_type *it = head_.load(boost::memory_order_acquire);
 		head_.store(NULL, boost::memory_order_release);
-		size_.load(boost::memory_order_acquire);
-		size_.store(boost::memory_order_release);
 
 		node_type *tmp;
 		while(NULL != it)
@@ -360,8 +372,9 @@ private:
 	}
 
 	inline node_type *create_node(BOOST_FWD_REF(E) e) {
-		node_type* ptr = node_allocator_.allocate(1);
-		return new (static_cast<void*>(ptr)) node_type( boost::forward<E>(e) );
+		node_type* result = node_allocator_.allocate(1);
+		result = new ( static_cast<void*>(result) ) node_type( boost::forward<E>(e) );
+		return result;
 	}
 
 	inline void destroy_node(node_type* const nd) {
@@ -371,7 +384,6 @@ private:
 private:
 	boost::atomic<node_type*> head_;
 	node_allocator node_allocator_;
-	boost::atomic_size_t size_;
 };
 
 } // namespace smallobject

@@ -10,8 +10,7 @@ inline void pool::release_arena(arena* ar) BOOST_NOEXCEPT_OR_NOTHROW
 }
 
 pool::pool():
-	arena_(&pool::release_arena),
-	mtx_()
+	arena_(&pool::release_arena)
 {}
 
 pool::~pool() BOOST_NOEXCEPT_OR_NOTHROW
@@ -28,27 +27,22 @@ pool::~pool() BOOST_NOEXCEPT_OR_NOTHROW
 	}
 }
 
-arena* pool::reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW
+void pool::reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW
 {
-	arena *result = arena_.get();
-	if(!result) {
-		arenas_pool::iterator it = arenas_.begin();
-		arenas_pool::iterator end = arenas_.end();
-		while(it != end) {
-            bool reserved = (*it)->reserve();
-			if(reserved) {
-				result = *it;
-				break;
-			}
-			++it;
+	arenas_pool::const_iterator it = arenas_.cbegin();
+	arenas_pool::const_iterator end = arenas_.cend();
+	while(it != end) {
+		if( (*it)->reserve() ) {
+			arena_.reset(*it);
+			break;
 		}
-		if(!result) {
-			result = new arena(size);
-			arenas_.push_front( BOOST_MOVE_BASE(arena*, result) );
-		}
-		arena_.reset(result);
+		++it;
 	}
-	return result;
+	if( NULL == arena_.get() ) {
+		arena_.reset( new arena(size) );
+		assert( arena_->reserve() );
+		arenas_.push_front( arena_.get() );
+	}
 }
 
 

@@ -3,8 +3,11 @@
 
 #include <boost/config.hpp>
 
+//#undef _WIN32_WINNT
+//#define _WIN32_WINNT 0x0600
+
 #if defined(BOOST_WINDOWS) && (_WIN32_WINNT >= 0x0600)
-#		include "win/swrlock.hpp"
+#		include "win/srwlock.hpp"
 #elif defined(BOOST_POSIX_API)
 #	include "posix/pthrwlock.hpp"
 #else

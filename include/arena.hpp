@@ -13,6 +13,10 @@
 #pragma once
 #endif // BOOST_HAS_PRAGMA_ONCE
 
+#if !defined(BOOST_ATOMIC_FLAG_LOCK_FREE) || BOOST_ATOMIC_FLAG_LOCK_FREE == 0
+#error "Lock free requeared"
+#endif // BOOST_ATOMIC_FLAG_LOCK_FREE
+
 namespace smallobject { namespace detail {
 
 /// compares two pointers on allocated memory regions
@@ -36,7 +40,7 @@ class arena: public noncopyable {
 BOOST_MOVABLE_BUT_NOT_COPYABLE(arena)
 private:
 	// a free list (free binary search AVL tree)
-	typedef smallobject::synchronized_range_map<
+	typedef smallobject::range_map<
 			const uint8_t*,
 			chunk*,
 			byte_ptr_less,
@@ -71,11 +75,15 @@ public:
 	/// do spinlock
 	/// \return true if success and false if arena alrady reserved by some thread
 	/// \throw never thows
-	bool reserve() BOOST_NOEXCEPT_OR_NOTHROW;
+	inline bool reserve() BOOST_NOEXCEPT_OR_NOTHROW {
+		return ! reserved_.test_and_set();
+	}
 
 	/// Releases previusly reserved arena
 	/// \throw never trows
-	void release() BOOST_NOEXCEPT_OR_NOTHROW;
+	void release() BOOST_NOEXCEPT_OR_NOTHROW {
+		reserved_.clear();
+	}
 
 	/// Shinks no longer used memory, and returns it back to operating system
 	/// may spinlocks and system locks
@@ -100,8 +108,7 @@ private:
 	/// do spinlock
 	/// \return true whether sucesses, otherwise false
 	BOOST_FORCEINLINE bool try_to_free(const uint8_t* ptr, chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW;
-	/// Checks whether chunk is empty, do spinlock
-	BOOST_FORCEINLINE bool is_empty_chunk(chunk* const chnk) BOOST_NOEXCEPT_OR_NOTHROW;
+
 private:
 	const std::size_t block_size_;
 	chunks_rmap chunks_;

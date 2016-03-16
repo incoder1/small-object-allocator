@@ -22,7 +22,9 @@ arena::arena(const std::size_t block_size):
 	chunks_(),
 	alloc_current_(NULL),
 	free_current_(NULL),
-	free_chunks_(0)
+	reserved_(),
+	free_chunks_(1),
+	mtx_()
 {
 	chunk* first = create_new_chunk( block_size_ );
 	alloc_current_ = first;
@@ -40,7 +42,11 @@ arena::~arena() BOOST_NOEXCEPT_OR_NOTHROW
 BOOST_FORCEINLINE uint8_t* arena::try_to_alloc(chunk* const chnk) BOOST_NOEXCEPT_OR_NOTHROW
 {
 	unique_lock lock(mtx_);
-    return chnk->allocate(block_size_);
+	uint8_t *result = chnk->allocate(block_size_);
+	if(NULL != result) {
+		alloc_current_ = chnk;
+	}
+	return result;
 }
 
 void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_alloc)
@@ -54,7 +60,6 @@ void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_all
 			current = it->second;
 			result = try_to_alloc(current);
 			if(result) {
-				alloc_current_ = current;
 				break;
 			}
 			++it;
@@ -64,6 +69,7 @@ void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_all
 	if(NULL == result) {
 		current = create_new_chunk(block_size_);
 		result = current->allocate(block_size_);
+		unique_lock lock(mtx_);
 		chunks_.insert(current->begin(), current->end(), BOOST_MOVE_BASE(chunk*,current) );
 		alloc_current_ = current;
 		free_current_ = current;
@@ -72,27 +78,17 @@ void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_all
 }
 
 
-bool arena::reserve() BOOST_NOEXCEPT_OR_NOTHROW
-{
-	return ! reserved_.test_and_set(boost::memory_order_acquire);
-}
-
-void arena::release() BOOST_NOEXCEPT_OR_NOTHROW
-{
-	reserved_.clear(boost::memory_order_release);
-}
-
 inline bool arena::try_to_free(const uint8_t* ptr, chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW
 {
 	unique_lock lock(mtx_);
-	bool result = cnk->release(ptr,block_size_);
-	if(result) {
+	if(cnk->release(ptr,block_size_)) {
 		free_current_ = cnk;
 		if( cnk->empty() ) {
             ++free_chunks_;
 		}
+		return true;
 	}
-	return result;
+	return false;
 }
 
 bool arena::free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr) BOOST_NOEXCEPT_OR_NOTHROW
@@ -101,36 +97,27 @@ bool arena::free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr) BOOST_NOEXCEP
 	chunk* current = free_current_;
 	if( !try_to_free(p, current) ) {
 		chunks_rmap::iterator it = chunks_.find(p);
-		if( it != chunks_.end() ) {
-			current = it->second;
-			assert( try_to_free(p,current) );
-			free_current_ = current;
-		} else {
-			return false;
-		}
-		if(free_chunks_ > 2) {
-			shrink();
-		}
+		if(it == chunks_.end() ) return false;
+		current = it->second;
+		try_to_free(p, current);
+		free_current_ = current;
 	}
 	return true;
 }
 
-BOOST_FORCEINLINE bool arena::is_empty_chunk(chunk* const chnk) BOOST_NOEXCEPT_OR_NOTHROW
-{
-	unique_lock lock(mtx_);
-	return chnk->empty();
-}
 
 void arena::shrink() BOOST_NOEXCEPT_OR_NOTHROW {
+	unique_lock lock(mtx_);
 	chunks_rmap::iterator it = chunks_.begin();
 	chunks_rmap::iterator end = chunks_.end();
 	free_chunks_ = 0;
 	while(it != end)
 	{
-		if( is_empty_chunk(it->second) ) {
+		if( it->second->empty() ) {
 			if(++free_chunks_ > 2) {
 				chunks_rmap::iterator rit = it;
 				++it;
+				delete rit->second;
 				chunks_.erase(rit);
 			} else {
 				++it;

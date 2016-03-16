@@ -14,20 +14,22 @@ BOOST_MOVABLE_BUT_NOT_COPYABLE(pool)
 public:
 	explicit pool();
 	~pool() BOOST_NOEXCEPT_OR_NOTHROW;
-	BOOST_FORCEINLINE void *malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size)
+	void *malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size)
 	{
-		arena *ar = reserve(size);
-		return ar->malloc();
+		if(NULL == arena_.get()) {
+			reserve(size);
+		}
+		return arena_->malloc();
 	}
 	void free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW;
 private:
-	arena* reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
+	void reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
 	static inline void release_arena(arena* ar) BOOST_NOEXCEPT_OR_NOTHROW;
 private:
-	typedef list<arena*, sys::allocator<arena*> > arenas_pool;
+	typedef list<arena*> arenas_pool;
 	boost::thread_specific_ptr<arena> arena_;
 	arenas_pool arenas_;
-	boost::shared_mutex mtx_;
+	sys::critical_section mtx_;
 };
 
 }} //  namespace smallobject { namespace detail

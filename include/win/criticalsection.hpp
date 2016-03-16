@@ -11,7 +11,7 @@
 #endif // BOOST_HAS_PRAGMA_ONCE
 
 #ifndef _SOBJ_SPINCOUNT
-#	define	_SOBJ_SPINCOUNT 4000
+#	define	_SOBJ_SPINCOUNT 256
 #endif
 
 namespace smallobject { namespace sys {

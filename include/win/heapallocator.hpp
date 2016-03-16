@@ -3,7 +3,6 @@
 
 #include <boost/config.hpp>
 #include <boost/atomic.hpp>
-#include <boost/throw_exception.hpp>
 
 #include "criticalsection.hpp"
 
@@ -21,16 +20,13 @@ private:
 	{}
 	static void release() BOOST_NOEXCEPT_OR_NOTHROW;
 public:
-	static const heap_allocator* instance();
+	static heap_allocator* instance();
 
-	BOOST_FORCEINLINE void* allocate(std::size_t bytes) const {
-		void* result = ::HeapAlloc(hHeap_, 0, bytes);
-		if(NULL == result) {
-			boost::throw_exception( std::bad_alloc() );
-		}
-		return result;
+	void* allocate(std::size_t bytes) {
+		return ::HeapAlloc(hHeap_, 0, bytes);
 	}
-	BOOST_FORCEINLINE void release(void * const block) const {
+
+	void release(void * const block) {
 		assert( ::HeapFree(hHeap_, 0, block) );
 	}
 private:

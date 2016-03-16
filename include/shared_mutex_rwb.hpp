@@ -20,15 +20,14 @@ private:
 	read_write_barier& operator=(const read_write_barier&);
 #endif // BOOST_NO_CXX11_DELETED_FUNCTIONS
 public:
-#ifndef BOOST_NO_CXX11_DEFAULTED_FUNCTIONS
-	read_write_barier() = default;
-	~read_write_barier() = default;
-#else
-	read_write_barier()
+
+	read_write_barier():
+		barier_()
 	{}
+
 	~read_write_barier()
 	{}
-#endif // read_write_barier
+
 	inline void read_lock() BOOST_NOEXCEPT_OR_NOTHROW {
 		barier_.lock_shared();
 	}
@@ -36,7 +35,7 @@ public:
 		barier_.unlock_shared();
 	}
 	inline void write_lock() BOOST_NOEXCEPT_OR_NOTHROW {
-		barier_.lock_shared();
+		barier_.lock();
 		barier_.unlock_and_lock_upgrade();
 	}
 	inline void write_unlock() BOOST_NOEXCEPT_OR_NOTHROW {

@@ -426,8 +426,10 @@ public:
 
 	inline const iterator begin() {
 		_node_t *most_left = root_;
-		while( most_left->left() ) {
-			most_left = most_left->left();
+		if(NULL != most_left) {
+			while( most_left->left() ) {
+				most_left = most_left->left();
+			}
 		}
 		return iterator(most_left);
 	}

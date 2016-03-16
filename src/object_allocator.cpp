@@ -17,14 +17,13 @@ static const std::size_t POOLS_COUNT = ( ( object_allocator::MAX_SIZE / sizeof(s
 
 const object_allocator* object_allocator::instance()
 {
-	object_allocator *tmp = _instance.load(boost::memory_order_relaxed);
+	object_allocator *tmp = _instance.load(boost::memory_order_consume);
 	if (!tmp) {
 		unique_lock lock(_smtx);
-		tmp = _instance.load(boost::memory_order_relaxed);
+		tmp = _instance.load(boost::memory_order_consume);
 		if (!tmp) {
 			tmp = new object_allocator();
 			_instance.store(tmp, boost::memory_order_release);
-			boost::atomic_thread_fence(boost::memory_order_acquire);
 			std::atexit(&object_allocator::release);
 		}
 	}

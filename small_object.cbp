@@ -18,7 +18,6 @@
 					<Add option="-Wextra" />
 					<Add option="-Wall" />
 					<Add option="-std=c++11" />
-					<Add option="-pg" />
 					<Add option="-g" />
 					<Add option="-Og" />
 					<Add option="-fexceptions" />
@@ -27,9 +26,9 @@
 					<Add directory="include/win" />
 				</Compiler>
 				<Linker>
-					<Add option="-pg -lgmon" />
 					<Add library="boost_system-mt-d.dll" />
 					<Add library="boost_thread-mt-d.dll" />
+					<Add library="kernel32" />
 					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
 				</Linker>
 			</Target>
@@ -132,8 +131,18 @@
 				</Linker>
 			</Target>
 		</Build>
+		<Compiler>
+			<Add option="-DBOOST_SYSTEM_NO_DEPRECATED" />
+		</Compiler>
+		<Unit filename="include/arena.hpp" />
+		<Unit filename="include/chunk.hpp" />
 		<Unit filename="include/critical_section.hpp" />
+		<Unit filename="include/lockfreelist.hpp" />
+		<Unit filename="include/mutex_critical_section.hpp" />
+		<Unit filename="include/noncopyable.hpp" />
 		<Unit filename="include/object.hpp" />
+		<Unit filename="include/object_allocator.hpp" />
+		<Unit filename="include/pool.hpp" />
 		<Unit filename="include/posix/mmap_allocator.hpp">
 			<Option target="debug-gcc-unix-amd64" />
 			<Option target="release-gcc-unix-amd64" />
@@ -144,6 +153,9 @@
 			<Option target="release-gcc-unix-amd64" />
 			<Option target="release-clang-unix-amd64" />
 		</Unit>
+		<Unit filename="include/range_map.hpp" />
+		<Unit filename="include/rw_barier.hpp" />
+		<Unit filename="include/shared_mutex_rwb.hpp" />
 		<Unit filename="include/sys_allocator.hpp" />
 		<Unit filename="include/win/criticalsection.hpp">
 			<Option target="debug-win-gcc-x64" />
@@ -153,7 +165,12 @@
 			<Option target="debug-win-gcc-x64" />
 			<Option target="release-win-gcc-x64" />
 		</Unit>
+		<Unit filename="include/win/srwlock.hpp" />
+		<Unit filename="src/arena.cpp" />
+		<Unit filename="src/chunk.cpp" />
 		<Unit filename="src/object.cpp" />
+		<Unit filename="src/object_allocator.cpp" />
+		<Unit filename="src/pool.cpp" />
 		<Unit filename="src/win/heapallocator.cpp">
 			<Option target="debug-win-gcc-x64" />
 			<Option target="release-win-gcc-x64" />

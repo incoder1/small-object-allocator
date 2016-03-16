@@ -33,6 +33,10 @@ class critical_section:private boost::noncopyable
 		::pthread_spinlock_t sl_;
 };
 
-}} // namespace smallobject { namespace sys
+} //  namespace sys
+
+typedef boost::unique_lock<sys::critical_section> unique_lock;
+
+} // namespace smallobject
 
 #endif // __SMALLOBJECT_UNIX_SPINLOCK_HPP_INCLUDED__
