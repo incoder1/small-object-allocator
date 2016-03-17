@@ -1,20 +1,21 @@
 #ifndef __SMALLOBJECT_ARENA_HPP_INCLUDED__
 #define __SMALLOBJECT_ARENA_HPP_INCLUDED__
 
+#include <vector>
 #include <boost/atomic.hpp>
 #include <boost/throw_exception.hpp>
 
 #include "chunk.hpp"
 #include "noncopyable.hpp"
 #include "range_map.hpp"
-#include "rw_barier.hpp"
+#include "rw_barrier.hpp"
 
 #ifdef BOOST_HAS_PRAGMA_ONCE
 #pragma once
 #endif // BOOST_HAS_PRAGMA_ONCE
 
 #if !defined(BOOST_ATOMIC_FLAG_LOCK_FREE) || BOOST_ATOMIC_FLAG_LOCK_FREE == 0
-#error "Lock free requeared"
+#error "Lock free atomics support needed for smallobject"
 #endif // BOOST_ATOMIC_FLAG_LOCK_FREE
 
 namespace smallobject { namespace detail {
@@ -72,7 +73,7 @@ public:
 
 	/// Synchronized version of free, user when one thread is
 	/// allocating memory, and another releasing it
-	inline bool synch_free(void const *ptr) BOOST_NOEXCEPT_OR_NOTHROW
+	BOOST_FORCEINLINE bool synch_free(void const *ptr) BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		sys::write_lock lock(rwb_);
 		return free(ptr);
@@ -119,8 +120,7 @@ private:
 	chunk* alloc_current_;
 	chunk* free_current_;
 	boost::atomic_flag reserved_;
-	std::size_t free_chunks_;
-	sys::read_write_barier rwb_;
+	sys::read_write_barrier rwb_;
 };
 
 

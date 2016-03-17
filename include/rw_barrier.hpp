@@ -3,16 +3,22 @@
 
 #include <boost/config.hpp>
 
+// Ming 64 attemps to use Windows XP by default
+// Windows XP is no longer supported by Microsoft
 #ifdef __MINGW64__
 #undef _WIN32_WINNT
 #define _WIN32_WINNT 0x0600
 #endif // __MINGW64__
 
 #if defined(BOOST_WINDOWS) && (_WIN32_WINNT >= 0x0600)
+// Windows Vista+ can use SWR locks
 #		include "win/srwlock.hpp"
 #elif defined(BOOST_POSIX_API)
+// Unix can use pthread bases read/write lock
 #	include "posix/pthrwlock.hpp"
 #else
+// On legacy or unknown platforms shared mutex is default
+// working slowly then native API in most cases
 #	include "shared_mutex_rwb.hpp"
 #endif // BOOST_POSIX_API
 
@@ -22,9 +28,10 @@
 
 namespace smallobject { namespace sys {
 
+/// \brief Slim reader/writer shared lock
 class read_lock {
 public:
-	explicit read_lock(read_write_barier& barier):
+	explicit read_lock(read_write_barrier& barier):
 		barier_(barier)
 	{
 		barier_.read_lock();
@@ -34,13 +41,14 @@ public:
 		barier_.read_unlock();
 	}
 private:
-	read_write_barier& barier_;
+	read_write_barrier& barier_;
 };
 
+/// \brief Slim reader/writer exclusive lock
 class write_lock
 {
 public:
-	explicit write_lock(read_write_barier& barier):
+	explicit write_lock(read_write_barrier& barier):
 		barier_(barier)
 	{
 		barier_.write_lock();
@@ -50,7 +58,7 @@ public:
 		barier_.write_unlock();
 	}
 private:
-	read_write_barier& barier_;
+	read_write_barrier& barier_;
 };
 
 }} //  smallobject { namespace sys {

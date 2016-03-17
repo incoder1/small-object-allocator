@@ -54,6 +54,13 @@ struct user_allocator
 #	define __SM_SYS_POOL_MAX_SIZE 512
 #endif // __SM_INTERNAL_POOL_NEXT_SIZE
 
+/// \brief System depended native memory allocator
+/// optimized for allocating small objects
+/// with reserving virtual pages in system memory
+/// Based on boost pool library
+/// \param _DataType the type of object for memory allocation
+/// \param NextSize an initial memory size for system reserve in sizeof of _DataType, default is * 256
+/// \param MaxSize maximal memory size for system reserve in sizeof of _DataType, default is 512
 template<typename _DataType,
 	unsigned NextSize = __SM_SYS_POOL_NEXT_SIZE ,
 	unsigned MaxSize = __SM_SYS_POOL_MAX_SIZE >

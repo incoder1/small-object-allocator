@@ -30,19 +30,18 @@ protected:
 public:
 	virtual ~MyObject() BOOST_NOEXCEPT_OR_NOTHROW = 0;
 
-//	void* operator new(std::size_t bytes) BOOST_THROWS(std::bad_alloc) {
-//		void *result = ::je_malloc(bytes);
-//		if(NULL == result) {
-//			boost::throw_exception(std::bad_alloc());
-//		}
-//		return result;
-//	}
+	void* operator new(std::size_t bytes) BOOST_THROWS(std::bad_alloc) {
+		void *result = ::je_malloc(bytes);
+		if(NULL == result) {
+			boost::throw_exception(std::bad_alloc());
+		}
+		return result;
+	}
 
-//	void operator delete(void* const ptr) BOOST_NOEXCEPT_OR_NOTHROW
-//	{
-		//::je_free(ptr);
-//		std::free(ptr);
-//	}
+	void operator delete(void* const ptr) BOOST_NOEXCEPT_OR_NOTHROW
+	{
+		::je_free(ptr);
+	}
 
 private:
 	friend BOOST_FORCEINLINE void intrusive_ptr_add_ref(MyObject* obj);
@@ -140,7 +139,7 @@ BOOST_DECLARE_OBJECT_PTR_T(Button);
 
 static const int THREADS = std::thread::hardware_concurrency();
 static const int OBJECTS_COUNT = 1000000;
-static const int OBJECTS_VECTOR_SIZE = 32;
+static const int OBJECTS_VECTOR_SIZE = 512;
 static const int TESTS_COUNT = 3;
 
 void so_routine()

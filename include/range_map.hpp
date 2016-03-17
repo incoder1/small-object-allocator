@@ -16,10 +16,13 @@
 #include <functional>
 #include <iterator>
 
-#include "rw_barier.hpp"
+#include "rw_barrier.hpp"
 
 namespace smallobject {
 
+/// \brief the range of keys from min to max values
+/// \param K key type
+/// \param C key comparator, std::less<K> is default
 template<typename K, class C = std::less<const K> >
 class range {
 BOOST_COPYABLE_AND_MOVABLE(range)
@@ -35,12 +38,12 @@ public:
 		assert( cmp( min_ , max_ ) );
 	}
 
-	range(const range& rhs):
+	range(BOOST_COPY_ASSIGN_REF(range) rhs):
 		min_(rhs.min_),
 		max_(rhs.max_)
 	{}
 
-	inline range& operator=(const range& rhs)
+	inline range& operator=(BOOST_COPY_ASSIGN_REF(range) rhs)
 	{
 		range tmp(rhs);
 		tmp.swap(*this);
@@ -261,8 +264,10 @@ public:
 		} else {
 			result = from->top_;
 			if(NULL != result) {
-				if(result->right_ == from && NULL != result->top_ ) {
-					if(result == result->top_->left_ ) {
+				if(result->right_ == from) {
+					if(NULL == result->top_) {
+						result = NULL;
+					} else if(result == result->top_->left_ ) {
 						result = result->top_;
 					} else {
 						result = NULL;
@@ -357,7 +362,9 @@ public:
 	}
 
 	self_type& operator++() {
-		if(node_) node_ = link_type::inc_node(node_);
+		if(NULL != node_) {
+			node_ = link_type::inc_node(node_);
+		}
 		return *this;
 	}
 
@@ -416,6 +423,11 @@ public:
 	inline bool insert(BOOST_FWD_REF(value_type) v)
 	{
 		return insert_node( boost::forward<value_type>(v) );
+	}
+
+	inline bool insert(BOOST_COPY_ASSIGN_REF(value_type) v)
+	{
+		return insert( BOOST_MOVE_BASE(value_type,v) );
 	}
 
 	inline bool insert(BOOST_FWD_REF(key_type) min, BOOST_FWD_REF(key_type) max, BOOST_FWD_REF(mapped_type) val)
@@ -677,7 +689,12 @@ private:
 	_node_allocator allocator_;
 };
 
-
+/// \brief Associative sorted container where key can be in range of values
+/// Based on AVL tree, optimized for search and insertion when erase operation is time expensive.
+/// \param K key type
+/// \param V value type
+/// \param C key comparator, std::less<K> is default
+/// \param A allocator type, std::allocator is default
 template<
 		typename K, typename V,
 		class C = std::less<K>,
@@ -692,6 +709,11 @@ public:
 	{}
 };
 
+/// \brief Slim reader/writer thread safe synchronized version of range map
+/// \param K key type
+/// \param V value type
+/// \param C key comparator, std::less<K> is default
+/// \param A allocator type, std::allocator is default
 template<
 		typename K, typename V,
 		class C = std::less<K>,
@@ -707,13 +729,14 @@ public:
 	typedef typename base_type::mapped_type mapped_type;
 	typedef typename base_type::value_type value_type;
 	typedef typename base_type::iterator iterator;
+
 	synchronized_range_map():
 		base_type(),
-		mtx_()
+		rwb_()
 	{}
 	bool insert(BOOST_FWD_REF(value_type) v)
 	{
-		sys::write_lock lock(mtx_);
+		sys::write_lock lock(rwb_);
 		return base_type::insert( boost::forward<value_type>(v) );
 	}
 	bool insert(BOOST_FWD_REF(key_type) min, BOOST_FWD_REF(key_type) max, BOOST_FWD_REF(mapped_type) val)
@@ -723,24 +746,24 @@ public:
 	}
 	void erase(const iterator& position)
 	{
-		sys::write_lock lock(mtx_);
+		sys::write_lock lock(rwb_);
 		base_type::erase(position);
 	}
 	const iterator find(const key_type& key)
 	{
-		sys::read_lock lock(mtx_);
+		sys::read_lock lock(rwb_);
 		return base_type::find(key);
 	}
 	const iterator begin() {
-		sys::read_lock lock(mtx_);
+		sys::read_lock lock(rwb_);
 		return base_type::begin();
 	}
 	bool empty() {
-		sys::read_lock lock(mtx_);
+		sys::read_lock lock(rwb_);
 		return base_type::empty();
 	}
 private:
-	sys::read_write_barier mtx_;
+	sys::read_write_barrier rwb_;
 };
 
 } // { namespace smallobject

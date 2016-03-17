@@ -8,9 +8,11 @@
 
 namespace smallobject { namespace detail {
 
+/// !\brief A pool of memory arenas for allocating
+/// small object of fixed size memory
+/// Reserves or creates one arena for each thread
 class pool
 {
-BOOST_MOVABLE_BUT_NOT_COPYABLE(pool)
 public:
 	explicit pool();
 	~pool() BOOST_NOEXCEPT_OR_NOTHROW;

@@ -15,7 +15,8 @@
 namespace smallobject { namespace detail {
 
 /**
- * ! \brief A chunk of allocated memory divided on UCHAR_MAX of fixed blocks
+ * \brief A chunk of allocated memory divided on UCHAR_MAX of fixed blocks
+ * Can only allocate UCHAR_MAX of fixed size blocks
  */
 class chunk
 {
@@ -28,7 +29,8 @@ class chunk
       chunk& operator=( const chunk& );
 #endif // no deleted functions
 public:
-	BOOST_STATIC_CONSTANT(uint8_t, MAX_BLOCKS  = UCHAR_MAX);
+
+	static const uint8_t MAX_BLOCKS;
 
 	chunk(const uint8_t block_size, const uint8_t* begin) BOOST_NOEXCEPT_OR_NOTHROW;
 
@@ -37,11 +39,9 @@ public:
 	 * \param block_size size of minimal memory block, must be the same for the whole chunk
 	 * \param blocks count of blocks to be allocated in time
 	 */
-	inline uint8_t* allocate(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
+	BOOST_FORCEINLINE uint8_t* allocate(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		if (0 == free_blocks_) {
-			return NULL;
-		}
+		if (0 == free_blocks_) return NULL;
 		uint8_t *result = const_cast<uint8_t*>( begin_ + (position_ * block_size) );
 		position_ = *result;
 		--free_blocks_;
@@ -52,7 +52,7 @@ public:
 	 * \param ptr pointer on allocated memory
 	 * \param bloc_size size of minimal allocated block
 	 */
-	inline bool release(const uint8_t* ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
+	BOOST_FORCEINLINE bool release(const uint8_t* ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		if( (ptr < begin_) || (ptr > end_) ) return false;
 		*(const_cast<uint8_t*>(ptr)) = position_;
@@ -75,10 +75,10 @@ public:
 	}
 
 private:
-	uint8_t position_;
-	uint8_t free_blocks_;
 	const uint8_t* begin_;
 	const uint8_t* end_;
+	uint8_t free_blocks_;
+	uint8_t position_;
 };
 
 } } // { namespace smallobject { namespace detail

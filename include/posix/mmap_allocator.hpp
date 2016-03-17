@@ -8,6 +8,7 @@
 
 namespace smallobject { namespace sys {
 
+/// Posix system memory allocator based on mmap
 inline void* xmalloc(std::size_t size)
 {
 	void *addr = NULL;
@@ -23,6 +24,7 @@ inline void* xmalloc(std::size_t size)
 	return (result);
 }
 
+/// Posix system memory deallocator based on munmap
 BOOST_FORCEINLINE void xfree(void * const ptr, const std::size_t size)
 {
 	assert( ptr );

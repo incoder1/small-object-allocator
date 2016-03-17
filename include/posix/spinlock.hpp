@@ -6,6 +6,8 @@
 
 namespace smallobject { namespace sys {
 
+/// !\brief pthread spinlock based critical section
+/// synchronization primitive
 class critical_section:private boost::noncopyable
 {
 	public:

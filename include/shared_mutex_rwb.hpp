@@ -10,22 +10,23 @@
 
 namespace smallobject { namespace sys {
 
-class read_write_barier {
+/// Boost thread shared mutex based slim reader/writter barrier implemenation
+class read_write_barrier {
 #ifndef BOOST_NO_CXX11_DELETED_FUNCTIONS
-	read_write_barier(const read_write_barier&) = delete;
-	read_write_barier& operator=(const read_write_barier&) = delete;
+	read_write_barrier(const read_write_barrier&) = delete;
+	read_write_barrier& operator=(const read_write_barrier&) = delete;
 #else
 private:
-	read_write_barier(const read_write_barier&);
-	read_write_barier& operator=(const read_write_barier&);
+	read_write_barrier(const read_write_barrier&);
+	read_write_barrier& operator=(const read_write_barrier&);
 #endif // BOOST_NO_CXX11_DELETED_FUNCTIONS
 public:
 
-	read_write_barier():
+	read_write_barrier():
 		barier_()
 	{}
 
-	~read_write_barier()
+	~read_write_barrier()
 	{}
 
 	inline void read_lock() BOOST_NOEXCEPT_OR_NOTHROW {

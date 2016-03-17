@@ -11,11 +11,14 @@
 #endif // BOOST_HAS_PRAGMA_ONCE
 
 #ifndef _SOBJ_SPINCOUNT
-#	define	_SOBJ_SPINCOUNT 256
+#	define	_SOBJ_SPINCOUNT 4000
 #endif
 
 namespace smallobject { namespace sys {
 
+/// !\brief MS Windows depended implementation of critical section
+///  synchronization primitive
+/// In most cases doing spinlock, and semaphore when spinning reached to _SOBJ_SPINCOUNT
 class critical_section:private boost::noncopyable
 {
 	public:

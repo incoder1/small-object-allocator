@@ -12,6 +12,8 @@
 
 namespace smallobject { namespace sys {
 
+/// \brief Windows based private application heap
+/// memory allocator
 class heap_allocator:private boost::noncopyable
 {
 private:

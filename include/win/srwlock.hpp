@@ -19,24 +19,25 @@ extern "C" {
   VOID WINAPI AcquireSRWLockShared (PSRWLOCK SRWLock);
   WINBASEAPI BOOLEAN WINAPI TryAcquireSRWLockExclusive (PSRWLOCK SRWLock);
   WINBASEAPI BOOLEAN WINAPI TryAcquireSRWLockShared (PSRWLOCK SRWLock);
-}
+} // extern "C"
 #endif // __MINGW64__
 
 
 namespace smallobject { namespace sys {
 
-class read_write_barier
+/// Windows Vista+ SWR lock slim reader/writer barrier implementation
+class read_write_barrier
 {
 #ifndef BOOST_NO_CXX11_DELETED_FUNCTIONS
-	read_write_barier(const read_write_barier&) = delete;
-	read_write_barier& operator=(const read_write_barier&) = delete;
+	read_write_barrier(const read_write_barrier&) = delete;
+	read_write_barrier& operator=(const read_write_barrier&) = delete;
 #else
 private:
-	read_write_barier(const read_write_barier&);
-	read_write_barier& operator=(const read_write_barier&);
+	read_write_barrier(const read_write_barrier&);
+	read_write_barrier& operator=(const read_write_barrier&);
 #endif // BOOST_NO_CXX11_DELETED_FUNCTIONS
 public:
-	read_write_barier() BOOST_NOEXCEPT_OR_NOTHROW
+	read_write_barrier() BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		::InitializeSRWLock(&barier_);
 	}
