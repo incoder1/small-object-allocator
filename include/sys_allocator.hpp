@@ -22,7 +22,7 @@ namespace smallobject { namespace sys {
 BOOST_FORCEINLINE void* xmalloc(const std::size_t size) {
 	return ::malloc(size);
 }
-BOOST_FORCEINLINE void xfree(void * const ptr,const std::size_t size = 0) {
+BOOST_FORCEINLINE void xfree(void * const ptr) {
     ::free(ptr);
 }
 #endif // !defined(BOOST_WINDOWS) && !defined(BOOST_POSIX_API)

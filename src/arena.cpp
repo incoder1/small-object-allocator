@@ -14,7 +14,7 @@ BOOST_FORCEINLINE void arena::release_chunk(chunk* const cnk, const std::size_t 
 {
 	assert(cnk);
 	cnk->~chunk();
-	sys::xfree( static_cast<void*>(cnk), size + sizeof(chunk) );
+	sys::xfree( static_cast<void*>(cnk) );
 }
 
 arena::arena(const std::size_t block_size):

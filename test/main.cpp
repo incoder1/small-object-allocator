@@ -6,7 +6,7 @@
 #include <vector>
 #include <chrono>
 
-#include <jemalloc.h>
+//#include <jemalloc.h>
 
 
 #ifdef BOOST_NO_EXCEPTIONS
@@ -30,18 +30,18 @@ protected:
 public:
 	virtual ~MyObject() BOOST_NOEXCEPT_OR_NOTHROW = 0;
 
-	void* operator new(std::size_t bytes) BOOST_THROWS(std::bad_alloc) {
-		void *result = ::je_malloc(bytes);
-		if(NULL == result) {
-			boost::throw_exception(std::bad_alloc());
-		}
-		return result;
-	}
-
-	void operator delete(void* const ptr) BOOST_NOEXCEPT_OR_NOTHROW
-	{
-		::je_free(ptr);
-	}
+//	void* operator new(std::size_t bytes) BOOST_THROWS(std::bad_alloc) {
+//		void *result = ::je_malloc(bytes);
+//		if(NULL == result) {
+//			boost::throw_exception(std::bad_alloc());
+//		}
+//		return result;
+//	}
+//
+//	void operator delete(void* const ptr) BOOST_NOEXCEPT_OR_NOTHROW
+//	{
+//		::je_free(ptr);
+//	}
 
 private:
 	friend BOOST_FORCEINLINE void intrusive_ptr_add_ref(MyObject* obj);
@@ -138,9 +138,9 @@ BOOST_DECLARE_OBJECT_PTR_T(Panel);
 BOOST_DECLARE_OBJECT_PTR_T(Button);
 
 static const int THREADS = std::thread::hardware_concurrency();
-static const int OBJECTS_COUNT = 1000000;
-static const int OBJECTS_VECTOR_SIZE = 512;
-static const int TESTS_COUNT = 3;
+static const int OBJECTS_COUNT = 250000;
+static const int OBJECTS_VECTOR_SIZE = 8;
+static const int TESTS_COUNT = 30;
 
 void so_routine()
 {
@@ -171,7 +171,7 @@ void libc_routine()
 		s_MyPanel pnl(new MyPanel());
 		s_MyWidget wd1(new MyWidget());
 	}
-	std::vector<s_MyWidget, smallobject::sys::allocator<s_MyWidget> > widgets(OBJECTS_VECTOR_SIZE);
+	std::vector<s_MyWidget> widgets(OBJECTS_VECTOR_SIZE);
 	for(int i=0; i < (OBJECTS_COUNT /OBJECTS_VECTOR_SIZE); i++) {
         for(int i=0; i < OBJECTS_VECTOR_SIZE/4; i++) {
             widgets.emplace_back(new MyWidget());
@@ -233,13 +233,6 @@ void print_benchmarks_result(const char* type,double libc_total, double so_total
 	}
 }
 
-void memory_cache_make() {
-	std::size_t caches = (sizeof(Widget)*2)+sizeof(Button)+sizeof(Panel) * OBJECTS_COUNT;
-	void *dummy = std::malloc( caches );
-	*(int*)dummy = 0xFF;
-	::std::free(dummy);
-}
-
 //typedef smallobject::list<int> intlist;
 //typedef intlist::const_iterator cit;
 //
@@ -278,7 +271,7 @@ int main(int argc, const char** argv)
 	std::cout<<"Widget: " << sizeof(Widget) <<"    MyWidget: " << sizeof(MyWidget) <<" bytes" << std::endl;
 	std::cout<<"Button: " << sizeof(Button) <<"    MyButton: " << sizeof(MyButton) <<" bytes" << std::endl;
 	std::cout<<"Panel:  " <<  sizeof(Panel) <<"    MyPanel : " << sizeof(MyPanel) <<" bytes" << std::endl << std::endl;
-	memory_cache_make();
+
 	// Single thread benchmark
 	std::cout<<"Single threading benchmark"<<std::endl;
 	std::cout<<"Running LibC benchmark"<<std::endl;

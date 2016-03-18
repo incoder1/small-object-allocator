@@ -5,12 +5,12 @@
 
 // Ming 64 attemps to use Windows XP by default
 // Windows XP is no longer supported by Microsoft
-#ifdef __MINGW64__
+#if defined(__MINGW64__) && (__GNUC__ >= 4)
 #undef _WIN32_WINNT
 #define _WIN32_WINNT 0x0600
 #endif // __MINGW64__
 
-#if defined(BOOST_WINDOWS) && (_WIN32_WINNT >= 0x0600)
+#if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0600)
 // Windows Vista+ can use SWR locks
 #		include "win/srwlock.hpp"
 #elif defined(BOOST_POSIX_API)

@@ -12,7 +12,7 @@ heap_allocator* heap_allocator::instance() {
 		tmp = _instance.load(boost::memory_order_consume);
 		if (NULL == tmp) {
 			::HANDLE heap = ::HeapCreate( 0, 0, 0);
-			void* ptr = ::HeapAlloc(heap, 0, sizeof(heap_allocator) ) ;
+			void* ptr = ::HeapAlloc(heap, HEAP_NO_SERIALIZE, sizeof(heap_allocator) ) ;
 			tmp = new (ptr) heap_allocator(heap);
 			_instance.store(tmp, boost::memory_order_release);
 			std::atexit(&heap_allocator::release);

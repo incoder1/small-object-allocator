@@ -24,11 +24,11 @@ private:
 public:
 	static heap_allocator* instance();
 
-	void* allocate(std::size_t bytes) {
+	BOOST_FORCEINLINE void* allocate(std::size_t bytes) {
 		return ::HeapAlloc(hHeap_, 0, bytes);
 	}
 
-	void release(void * const block) {
+	BOOST_FORCEINLINE void release(void * const block) {
 		assert( ::HeapFree(hHeap_, 0, block) );
 	}
 private:

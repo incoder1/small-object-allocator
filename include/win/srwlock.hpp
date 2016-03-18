@@ -1,29 +1,56 @@
 #ifndef __SMALLOBJECT_SRWLOCK_HPP_INCLUDED__
 #define __SMALLOBJECT_SRWLOCK_HPP_INCLUDED__
 
+#include <boost/config.hpp>
+
+#ifdef BOOST_HAS_PRAGMA_ONCE
+#pragma once
+#endif // BOOST_HAS_PRAGMA_ONCE
+
 #if _WIN32_WINNT < 0x0600
 #error "SWRLock can be used only on Windows Vista +"
 #endif // _WIN32_WINNT
 
-#include <boost/config.hpp>
+#ifndef DECLSPEC_IMPORT
+#	if (defined (__i386__) || defined (__ia64__) || defined (__x86_64__) || defined (__arm__)) && !defined (__WIDL__)
+#		define DECLSPEC_IMPORT __declspec (dllimport)
+#	else
+#		define DECLSPEC_IMPORT
+#	endif
+#endif // DECLSPEC_IMPORT
 
-#include <windows.h>
+#ifndef WINBASEAPI
+#	ifndef _KERNEL32_
+#		define WINBASEAPI DECLSPEC_IMPORT
+#	else
+#		define WINBASEAPI
+#	endif
+#endif // WINBASEAPI
 
-#ifdef __MINGW64__
-typedef RTL_SRWLOCK SRWLOCK, *PSRWLOCK;
-extern "C" {
-  WINBASEAPI VOID WINAPI InitializeSRWLock (PSRWLOCK SRWLock);
-  VOID WINAPI ReleaseSRWLockExclusive (PSRWLOCK SRWLock);
-  VOID WINAPI ReleaseSRWLockShared (PSRWLOCK SRWLock);
-  VOID WINAPI AcquireSRWLockExclusive (PSRWLOCK SRWLock);
-  VOID WINAPI AcquireSRWLockShared (PSRWLOCK SRWLock);
-  WINBASEAPI BOOLEAN WINAPI TryAcquireSRWLockExclusive (PSRWLOCK SRWLock);
-  WINBASEAPI BOOLEAN WINAPI TryAcquireSRWLockShared (PSRWLOCK SRWLock);
-} // extern "C"
-#endif // __MINGW64__
+#ifndef WINAPI
+#	if defined(_ARM_)
+#		define WINAPI
+#	else
+#		define WINAPI __stdcall
+#	endif
+#endif // WINAPI
 
 
 namespace smallobject { namespace sys {
+
+namespace win32 {
+	typedef struct _RTL_SRWLOCK { PVOID Ptr; } SRWLOCK, *PSRWLOCK;
+	extern "C" {
+		WINBASEAPI VOID WINAPI InitializeSRWLock (PSRWLOCK SRWLock);
+		VOID WINAPI ReleaseSRWLockExclusive (PSRWLOCK SRWLock);
+		VOID WINAPI ReleaseSRWLockShared (PSRWLOCK SRWLock);
+		VOID WINAPI AcquireSRWLockExclusive (PSRWLOCK SRWLock);
+		VOID WINAPI AcquireSRWLockShared (PSRWLOCK SRWLock);
+		WINBASEAPI BOOLEAN WINAPI TryAcquireSRWLockExclusive (PSRWLOCK SRWLock);
+		WINBASEAPI BOOLEAN WINAPI TryAcquireSRWLockShared (PSRWLOCK SRWLock);
+	} // extern "C"
+}
+
 
 /// Windows Vista+ SWR lock slim reader/writer barrier implementation
 class read_write_barrier
@@ -39,26 +66,26 @@ private:
 public:
 	read_write_barrier() BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		::InitializeSRWLock(&barier_);
+		win32::InitializeSRWLock(&barier_);
 	}
 	inline void read_lock() BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		::AcquireSRWLockShared(&barier_);
+		win32::AcquireSRWLockShared(&barier_);
 	}
 	inline void read_unlock() BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		::ReleaseSRWLockShared(&barier_);
+		win32::ReleaseSRWLockShared(&barier_);
 	}
 	inline void write_lock() BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		::AcquireSRWLockExclusive(&barier_);
+		win32::AcquireSRWLockExclusive(&barier_);
 	}
 	inline void write_unlock() BOOST_NOEXCEPT_OR_NOTHROW
 	{
-        ::ReleaseSRWLockExclusive(&barier_);
+        win32::ReleaseSRWLockExclusive(&barier_);
 	}
 private:
-	::SRWLOCK barier_;
+	win32::SRWLOCK barier_;
 };
 
 } } // namespace smallobject { namespace sys

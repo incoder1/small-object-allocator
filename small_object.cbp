@@ -47,6 +47,7 @@
 					<Add option="-fexpensive-optimizations" />
 					<Add option="-O3" />
 					<Add option="-Wall" />
+					<Add option="-std=c++14" />
 					<Add option="-fno-exceptions" />
 					<Add option="-fno-rtti" />
 					<Add option="-std=gnu++14" />
@@ -156,7 +157,7 @@
 			<Option target="release-clang-unix-amd64" />
 		</Unit>
 		<Unit filename="include/range_map.hpp" />
-		<Unit filename="include/rw_barier.hpp" />
+		<Unit filename="include/rw_barrier.hpp" />
 		<Unit filename="include/shared_mutex_rwb.hpp" />
 		<Unit filename="include/sys_allocator.hpp" />
 		<Unit filename="include/win/criticalsection.hpp">
