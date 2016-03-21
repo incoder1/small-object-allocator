@@ -51,7 +51,7 @@ struct user_allocator
 
 #ifndef __SM_INTERNAL_POOL_NEXT_SIZE
 #	define __SM_SYS_POOL_NEXT_SIZE 256
-#	define __SM_SYS_POOL_MAX_SIZE 512
+#	define __SM_SYS_POOL_MAX_SIZE UINT_MAX
 #endif // __SM_INTERNAL_POOL_NEXT_SIZE
 
 /// \brief System depended native memory allocator

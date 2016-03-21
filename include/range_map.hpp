@@ -16,6 +16,7 @@
 #include <functional>
 #include <iterator>
 
+#include "sys_allocator.hpp"
 #include "rw_barrier.hpp"
 
 namespace smallobject {
@@ -114,51 +115,51 @@ public:
 	typedef F first_type;
 	typedef S second_type;
 
-	movable_pair(const first_type& __f, const second_type& __s):
+	movable_pair(BOOST_COPY_ASSIGN_REF(first_type) __f, BOOST_COPY_ASSIGN_REF(second_type) __s) BOOST_NOEXCEPT_OR_NOTHROW:
 		first(__f),
 		second(__s)
 	{}
 
-	movable_pair(BOOST_RV_REF(first_type) __f, BOOST_RV_REF(second_type) __s):
+	movable_pair(BOOST_RV_REF(first_type) __f, BOOST_RV_REF(second_type) __s) BOOST_NOEXCEPT_OR_NOTHROW:
        first( BOOST_MOVE_BASE(first_type,__f) ),
        second( BOOST_MOVE_BASE(second_type,__s) )
 	{}
 
-	movable_pair(const first_type& __f, BOOST_RV_REF(second_type) __s):
+	movable_pair( BOOST_COPY_ASSIGN_REF(first_type) __f, BOOST_RV_REF(second_type) __s) BOOST_NOEXCEPT_OR_NOTHROW:
        first(__f),
        second( BOOST_MOVE_BASE(second_type,__s) )
 	{}
 
-	movable_pair(BOOST_RV_REF(first_type) __f, const second_type& __s):
+	movable_pair(BOOST_RV_REF(first_type) __f, BOOST_COPY_ASSIGN_REF(second_type) __s) BOOST_NOEXCEPT_OR_NOTHROW:
        first( BOOST_MOVE_BASE(first_type,__f) ),
        second(__s)
 	{}
 
-	movable_pair( BOOST_RV_REF(movable_pair) rhs) BOOST_NOEXCEPT:
+	movable_pair( BOOST_RV_REF(movable_pair) rhs) BOOST_NOEXCEPT_OR_NOTHROW:
 	   first( BOOST_MOVE_BASE(first_type,rhs.first) ),
        second( BOOST_MOVE_BASE(second_type,rhs.second) )
 	{}
 
-	movable_pair& operator=( BOOST_RV_REF(movable_pair) rhs) BOOST_NOEXCEPT
+	movable_pair& operator=( BOOST_RV_REF(movable_pair) rhs) BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		first = BOOST_MOVE_BASE(first_type,first);
 		second = BOOST_MOVE_BASE(second_type,first);
 		return *this;
 	}
 
-	movable_pair(const movable_pair& rhs):
+	movable_pair(BOOST_COPY_ASSIGN_REF(movable_pair) rhs) BOOST_NOEXCEPT_OR_NOTHROW:
 		first(rhs.first),
 		second(rhs.second)
 	{}
 
-	movable_pair& operator=(const movable_pair& rhs)
+	movable_pair& operator=(BOOST_COPY_ASSIGN_REF(movable_pair) rhs) BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		movable_pair tmp(rhs);
 		swap(tmp);
 		return *this;
 	}
 
-	void swap(movable_pair& rhs)
+	void swap(movable_pair& rhs) BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		std::swap(first, rhs.first);
 		std::swap(second. rhs.second);
@@ -698,14 +699,14 @@ private:
 template<
 		typename K, typename V,
 		class C = std::less<K>,
-		class A = std::allocator< movable_pair< const range<K,C>, V > >
+		class A = sys::allocator< movable_pair< const range<K,C>, V > >
 		>
 class range_map:public basic_range_map<K,V,C,A>
 {
 private:
 	typedef basic_range_map<K,V,C,A> base_type;
 public:
-	range_map()
+	BOOST_CONSTEXPR range_map()
 	{}
 };
 
@@ -717,7 +718,7 @@ public:
 template<
 		typename K, typename V,
 		class C = std::less<K>,
-		class A = std::allocator< movable_pair< const range<K,C>, V > >
+		class A = sys::allocator< movable_pair< const range<K,C>, V > >
 		>
 class synchronized_range_map:public basic_range_map<K,V,C,A>
 {
@@ -734,31 +735,33 @@ public:
 		base_type(),
 		rwb_()
 	{}
-	bool insert(BOOST_FWD_REF(value_type) v)
+	inline bool insert(BOOST_FWD_REF(value_type) v)
 	{
 		sys::write_lock lock(rwb_);
 		return base_type::insert( boost::forward<value_type>(v) );
 	}
-	bool insert(BOOST_FWD_REF(key_type) min, BOOST_FWD_REF(key_type) max, BOOST_FWD_REF(mapped_type) val)
+	inline bool insert(BOOST_FWD_REF(key_type) min, BOOST_FWD_REF(key_type) max, BOOST_FWD_REF(mapped_type) val)
 	{
 		range_type range( boost::forward<key_type>(min), boost::forward<key_type>(max) );
 		return insert( value_type( BOOST_MOVE_BASE(range_type,range), boost::forward<mapped_type>(val) ) );
 	}
-	void erase(const iterator& position)
+	inline void erase(const iterator& position)
 	{
 		sys::write_lock lock(rwb_);
 		base_type::erase(position);
 	}
-	const iterator find(const key_type& key)
+	inline const iterator find(const key_type& key)
 	{
 		sys::read_lock lock(rwb_);
 		return base_type::find(key);
 	}
-	const iterator begin() {
+	inline const iterator begin()
+	{
 		sys::read_lock lock(rwb_);
 		return base_type::begin();
 	}
-	bool empty() {
+	inline bool empty()
+	{
 		sys::read_lock lock(rwb_);
 		return base_type::empty();
 	}

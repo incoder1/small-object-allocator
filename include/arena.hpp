@@ -82,7 +82,7 @@ public:
 	/// Makes attemp to reserve this arena for thread
 	/// \return true if success and false if arena alrady reserved by some thread
 	/// \throw never thows
-	inline bool reserve() BOOST_NOEXCEPT_OR_NOTHROW {
+	BOOST_FORCEINLINE bool reserve() BOOST_NOEXCEPT_OR_NOTHROW {
 		return ! reserved_.test_and_set();
 	}
 

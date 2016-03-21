@@ -6,7 +6,7 @@
 #include <vector>
 #include <chrono>
 
-//#include <jemalloc.h>
+#include <jemalloc.h>
 
 
 #ifdef BOOST_NO_EXCEPTIONS
@@ -29,7 +29,7 @@ protected:
 	{}
 public:
 	virtual ~MyObject() BOOST_NOEXCEPT_OR_NOTHROW = 0;
-
+//
 //	void* operator new(std::size_t bytes) BOOST_THROWS(std::bad_alloc) {
 //		void *result = ::je_malloc(bytes);
 //		if(NULL == result) {

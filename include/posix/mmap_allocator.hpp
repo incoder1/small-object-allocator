@@ -15,8 +15,7 @@ inline void* xmalloc(const std::size_t size)
 	const std::size_t block_size = size + sizeof(std::size_t);
 	void *result = ::mmap(addr, block_size, (PROT_READ | PROT_WRITE), (MAP_PRIVATE | MAP_ANONYMOUS), -1, 0);
 	if (result == MAP_FAILED || (NULL != addr && result != addr) ) {
-        if(NULL != addr && result != addr)
-        {
+        if(NULL != addr && result != addr) {
              ::munmap( result, size);
         }
 		boost::throw_exception( std::bad_alloc() );
