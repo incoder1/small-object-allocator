@@ -54,7 +54,7 @@ public:
 	 */
 	BOOST_FORCEINLINE bool release(const uint8_t* ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		if( (ptr < begin_) || (ptr > end_) ) return false;
+		if( (ptr > end_) || (ptr < begin_) ) return false;
 		*(const_cast<uint8_t*>(ptr)) = position_;
 		position_ =  static_cast<uint8_t>( (ptr - begin_) / block_size );
 		++free_blocks_;

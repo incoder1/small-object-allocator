@@ -12,8 +12,8 @@ BOOST_FORCEINLINE chunk* arena::create_new_chunk(const std::size_t size)
 
 BOOST_FORCEINLINE void arena::release_chunk(chunk* const cnk, const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW
 {
-	assert(cnk);
-	cnk->~chunk();
+	// assert(cnk);
+	// cnk->~chunk();
 	sys::xfree( static_cast<void*>(cnk) );
 }
 
@@ -117,14 +117,18 @@ void arena::shrink() BOOST_NOEXCEPT_OR_NOTHROW {
 	chvector::iterator i = non_empty.begin();
 	chvector::iterator last = non_empty.end();
 	while(i != last) {
-		std::cout<<(std::size_t)*i<<std::endl;
 		chunks_.insert( (*i)->begin(),(*i)->end(), BOOST_MOVE_BASE(chunk*,*i) );
 		++i;
 	}
-	chunk* first = create_new_chunk( block_size_ );
-	alloc_current_ = first;
-	free_current_  = first;
-	chunks_.insert( first->begin(),  first->end(), BOOST_MOVE_BASE(chunk*,first) );
+	if(chunks_.empty()) {
+		chunk* first = create_new_chunk( block_size_ );
+		alloc_current_ = first;
+		free_current_  = first;
+		chunks_.insert( first->begin(),  first->end(), BOOST_MOVE_BASE(chunk*,first) );
+	} else {
+		alloc_current_ = chunks_.begin()->second;
+		free_current_ = alloc_current_;
+	}
 }
 
 }} //  namespace smallobject { namespace detail

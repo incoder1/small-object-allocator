@@ -5,7 +5,7 @@
 
 #include <boost/atomic.hpp>
 #include <boost/move/move.hpp>
-#include <boost/thread/thread.hpp>
+#include <boost/thread/thread_only.hpp>
 
 #ifndef _SOBJ_SPINCOUNT
 #	define	_SOBJ_SPINCOUNT 4000

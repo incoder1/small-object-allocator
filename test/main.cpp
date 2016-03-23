@@ -6,7 +6,7 @@
 #include <vector>
 #include <chrono>
 
-//#include <jemalloc.h>
+#include <jemalloc.h>
 
 
 #ifdef BOOST_NO_EXCEPTIONS
@@ -29,19 +29,19 @@ protected:
 	{}
 public:
 	virtual ~MyObject() BOOST_NOEXCEPT_OR_NOTHROW = 0;
-//
-//	void* operator new(std::size_t bytes) BOOST_THROWS(std::bad_alloc) {
-//		void *result = ::je_malloc(bytes);
-//		if(NULL == result) {
-//			boost::throw_exception(std::bad_alloc());
-//		}
-//		return result;
-//	}
-//
-//	void operator delete(void* const ptr) BOOST_NOEXCEPT_OR_NOTHROW
-//	{
-//		::je_free(ptr);
-//	}
+
+	void* operator new(std::size_t bytes) BOOST_THROWS(std::bad_alloc) {
+		void *result = ::je_malloc(bytes);
+		if(NULL == result) {
+			boost::throw_exception(std::bad_alloc());
+		}
+		return result;
+	}
+
+	void operator delete(void* const ptr) BOOST_NOEXCEPT_OR_NOTHROW
+	{
+		::je_free(ptr);
+	}
 
 private:
 	friend BOOST_FORCEINLINE void intrusive_ptr_add_ref(MyObject* obj);

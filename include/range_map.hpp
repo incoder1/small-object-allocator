@@ -71,11 +71,11 @@ public:
 	~range()
 	{}
 
-	inline const K& min() const {
+	BOOST_FORCEINLINE const K& min() const {
 		return min_;
 	}
 
-	inline const K& max() const {
+	BOOST_FORCEINLINE const K& max() const {
 		return max_;
 	}
 
@@ -85,7 +85,7 @@ public:
 		std::swap( max_, rhs.max_ );
 	}
 
-	inline int8_t compare_to_key(const K& key) const
+	BOOST_FORCEINLINE int8_t compare_to_key(const K& key) const
 	{
 		comparator_type cmp;
 		int8_t result = cmp( key, min_) ? -1 : 0;
@@ -93,7 +93,7 @@ public:
 		return result;
 	}
 
-	inline int8_t compare_to(const range& rhs) const {
+	BOOST_FORCEINLINE int8_t compare_to(const range& rhs) const {
 		comparator_type cmp;
 		int8_t result = ( cmp(rhs.min_,min_) && cmp(rhs.max_,max_) ) ? 1 : 0;
 		if(0 == result) {
@@ -162,7 +162,7 @@ public:
 	void swap(movable_pair& rhs) BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		std::swap(first, rhs.first);
-		std::swap(second. rhs.second);
+		std::swap(second, rhs.second);
 	}
 
 	~movable_pair()
@@ -199,42 +199,42 @@ public:
 	~avl_tree_node()
 	{}
 
-	const value_type* value() const
+	BOOST_FORCEINLINE const value_type* value() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		return &value_;
 	}
 
-	inline self_type* top() const {
+	BOOST_FORCEINLINE self_type* top() const BOOST_NOEXCEPT_OR_NOTHROW {
 		return top_;
 	}
 
-	inline self_type* left() const
+	BOOST_FORCEINLINE self_type* left() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		return left_;
 	}
 
-	inline void set_left(self_type* const new_left)
+	BOOST_FORCEINLINE void set_left(self_type* const new_left) BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		left_ = new_left;
 		if(new_left) new_left->top_ = const_cast<self_type*>(this);
 	}
 
-	inline self_type* right() const
+	BOOST_FORCEINLINE self_type* right() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		return right_;
 	}
 
-	inline void set_right(self_type* const new_right)
+	inline void set_right(self_type* const new_right) BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		right_ = new_right;
 		if(new_right) new_right->top_ = const_cast<self_type*>(this);
 	}
 
-	inline void make_root() {
+	BOOST_FORCEINLINE void make_root() BOOST_NOEXCEPT_OR_NOTHROW {
 		top_ = NULL;
 	}
 
-	static self_type* balance(self_type * const p)
+	static self_type* balance(self_type * const p) BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		p->fix_height();
 		int8_t factor = b_factor(p);
@@ -255,7 +255,7 @@ public:
 		return p;
 	}
 
-	static self_type*  inc_node(self_type* const from) {
+	static self_type*  inc_node(self_type* const from) BOOST_NOEXCEPT_OR_NOTHROW {
 		self_type *result = from;
 		if (from->right_ != NULL) {
 			result = result->right_;
@@ -281,12 +281,12 @@ public:
 
 private:
 
-	static inline int8_t height(self_type* const node)
+	static inline int8_t height(self_type* const node) BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		return (NULL != node) ? node->height_ : 0;
 	}
 
-	static inline self_type* rotate_right(self_type* const node)
+	static inline self_type* rotate_right(self_type* const node) BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		self_type* result = node->right_;
 		node->set_right(result->left_);
@@ -296,7 +296,7 @@ private:
 		return result;
 	}
 
-	static inline self_type* rotate_left(self_type* const node)
+	static inline self_type* rotate_left(self_type* const node) BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		avl_tree_node* result = node->left_;
 		node->set_left(result->right_);
@@ -306,19 +306,19 @@ private:
 		return result;
 	}
 
-	static inline int8_t b_factor(self_type* const node)
+	static inline int8_t b_factor(self_type* const node) BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		return (NULL != node) ? node->factor() : 0;
 	}
 
-	inline void fix_height()
+	inline void fix_height() BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		int8_t hl = height(left_);
 		int8_t hr = height(right_);
 		height_ =  ( (hl > hr ? hl : hr) + 1);
 	}
 
-	inline int8_t factor() const
+	inline int8_t factor() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		return height(left_) - height(right_);
 	}
@@ -350,15 +350,15 @@ public:
 	typedef std::forward_iterator_tag iterator_category;
     typedef ptrdiff_t difference_type;
 
-	explicit avl_tree_iterator(link_type* const node):
+	explicit avl_tree_iterator(link_type* const node) BOOST_NOEXCEPT_OR_NOTHROW:
 		node_(node)
 	{}
 
-	reference operator*() const  {
+	inline reference operator*() const BOOST_NOEXCEPT_OR_NOTHROW {
 		return *(node_->value());
 	}
 
-	pointer operator->() const {
+	inline pointer operator->() const BOOST_NOEXCEPT_OR_NOTHROW {
 		return const_cast<value_type*>( node_->value() );
 	}
 
@@ -369,11 +369,11 @@ public:
 		return *this;
 	}
 
-	bool operator != (const self_type& rhs) const {
+	inline bool operator != (const self_type& rhs) const {
 		return node_ != rhs.node_;
 	}
 
-	bool operator == (const self_type& rhs) const {
+	inline bool operator == (const self_type& rhs) const {
 		return node_ == rhs.node_;
 	}
 
@@ -387,7 +387,7 @@ struct get_it_avl_node
 	typedef typename _iterator_type::link_type node_type;
 	BOOST_CONSTEXPR get_it_avl_node()
 	{}
-	inline node_type* operator()(const _iterator_type& it) {
+	BOOST_FORCEINLINE node_type* operator()(const _iterator_type& it) {
 		return it.node_;
 	}
 };
