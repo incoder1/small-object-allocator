@@ -93,10 +93,8 @@
 				<Option compiler="gcc" />
 				<Option createDefFile="1" />
 				<Compiler>
-					<Add option="-march=corei7" />
 					<Add option="-fexpensive-optimizations" />
 					<Add option="-O3" />
-					<Add option="-Wextra" />
 					<Add option="-Wall" />
 					<Add option="-fno-exceptions" />
 					<Add option="-fno-rtti" />
@@ -107,7 +105,6 @@
 				<Linker>
 					<Add library="boost_system" />
 					<Add library="boost_thread" />
-					<Add library="jemalloc" />
 				</Linker>
 			</Target>
 			<Target title="release-clang-unix-amd64">
@@ -151,6 +148,7 @@
 			<Option target="release-gcc-unix-amd64" />
 			<Option target="release-clang-unix-amd64" />
 		</Unit>
+		<Unit filename="include/posix/pthrrwlock.hpp" />
 		<Unit filename="include/posix/spinlock.hpp">
 			<Option target="debug-gcc-unix-amd64" />
 			<Option target="release-gcc-unix-amd64" />

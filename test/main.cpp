@@ -6,7 +6,7 @@
 #include <vector>
 #include <chrono>
 
-#include <jemalloc.h>
+//#include <jemalloc.h>
 
 
 #ifdef BOOST_NO_EXCEPTIONS
@@ -137,7 +137,7 @@ BOOST_DECLARE_OBJECT_PTR_T(Widget);
 BOOST_DECLARE_OBJECT_PTR_T(Panel);
 BOOST_DECLARE_OBJECT_PTR_T(Button);
 
-static const int THREADS = std::thread::hardware_concurrency();
+static const int THREADS =  std::thread::hardware_concurrency();
 static const int OBJECTS_COUNT = 250000;
 static const int OBJECTS_VECTOR_SIZE = 8;
 static const int TESTS_COUNT = 30;

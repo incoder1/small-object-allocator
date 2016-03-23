@@ -13,9 +13,9 @@
 #if defined(_WIN32_WINNT) && (_WIN32_WINNT >= 0x0600)
 // Windows Vista+ can use SWR locks
 #		include "win/srwlock.hpp"
-#elif defined(BOOST_POSIX_API)
+#elif defined(unix) || defined(__unix) || defined(_XOPEN_SOURCE) || defined(_POSIX_SOURCE)
 // Unix can use pthread bases read/write lock
-#	include "posix/pthrwlock.hpp"
+#	include "posix/pthrrwlock.hpp"
 #else
 // On legacy or unknown platforms shared mutex is default
 // working slowly then native API in most cases

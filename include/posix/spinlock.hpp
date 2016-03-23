@@ -2,6 +2,7 @@
 #define __SMALLOBJECT_UNIX_SPINLOCK_HPP_INCLUDED__
 
 #include <boost/noncopyable.hpp>
+#include <boost/thread/locks.hpp>
 #include <pthread.h>
 
 namespace smallobject { namespace sys {

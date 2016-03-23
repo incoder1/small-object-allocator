@@ -44,7 +44,7 @@ object_allocator::~object_allocator() BOOST_NOEXCEPT_OR_NOTHROW {
 		p->~pool();
 		++p;
 	}
-	sys::xfree(pools_, sizeof(pool) * POOLS_COUNT );
+	sys::xfree(pools_);
 }
 
 void object_allocator::release() BOOST_NOEXCEPT_OR_NOTHROW {

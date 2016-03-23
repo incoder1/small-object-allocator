@@ -6,7 +6,7 @@
 
 #ifdef BOOST_WINDOWS
 #	include "win/heapallocator.hpp"
-#elif defined(BOOST_POSIX_API) && !defined(BOOST_WINDOWS)
+#elif defined(unix) || defined(__unix) || defined(_XOPEN_SOURCE) || defined(_POSIX_SOURCE)
 #	include "posix/mmap_allocator.hpp"
 #endif // defined
 
@@ -18,7 +18,7 @@
 
 namespace smallobject { namespace sys {
 
-#if !defined(BOOST_WINDOWS) && !defined(BOOST_POSIX_API)
+#if !defined(BOOST_WINDOWS) && !defined( __POSIX_MMAP_ALLOC_HPP_INCLUDED__)
 BOOST_FORCEINLINE void* xmalloc(const std::size_t size) {
 	return ::malloc(size);
 }

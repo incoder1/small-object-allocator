@@ -5,7 +5,7 @@
 
 #if  defined(BOOST_WINDOWS)
 #	include "win/criticalsection.hpp"
-#elif defined(BOOST_POSIX_API)
+#elif defined(unix) || defined(__unix) || defined(_XOPEN_SOURCE)  || defined(_POSIX_SOURCE)
 #	include "posix/spinlock.hpp"
 #else // use boost mutex if no native spinlock
 #	include "mutex_ciritical_section.hpp"
