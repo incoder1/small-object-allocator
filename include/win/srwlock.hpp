@@ -38,7 +38,7 @@
 
 namespace smallobject { namespace sys {
 
-namespace win32 {
+namespace winnt {
 	typedef struct _RTL_SRWLOCK { PVOID Ptr; } SRWLOCK, *PSRWLOCK;
 	extern "C" {
 		WINBASEAPI VOID WINAPI InitializeSRWLock (PSRWLOCK SRWLock);
@@ -66,26 +66,26 @@ private:
 public:
 	read_write_barrier() BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		win32::InitializeSRWLock(&barier_);
+		winnt::InitializeSRWLock(&barier_);
 	}
 	inline void read_lock() BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		win32::AcquireSRWLockShared(&barier_);
+		winnt::AcquireSRWLockShared(&barier_);
 	}
 	inline void read_unlock() BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		win32::ReleaseSRWLockShared(&barier_);
+		winnt::ReleaseSRWLockShared(&barier_);
 	}
 	inline void write_lock() BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		win32::AcquireSRWLockExclusive(&barier_);
+		winnt::AcquireSRWLockExclusive(&barier_);
 	}
 	inline void write_unlock() BOOST_NOEXCEPT_OR_NOTHROW
 	{
-        win32::ReleaseSRWLockExclusive(&barier_);
+        winnt::ReleaseSRWLockExclusive(&barier_);
 	}
 private:
-	win32::SRWLOCK barier_;
+	winnt::SRWLOCK barier_;
 };
 
 } } // namespace smallobject { namespace sys

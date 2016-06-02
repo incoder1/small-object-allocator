@@ -88,7 +88,7 @@ public:
 
 	/// Releases previusly reserved arena
 	/// \throw never trows
-	void release() BOOST_NOEXCEPT_OR_NOTHROW {
+	BOOST_FORCEINLINE void release() BOOST_NOEXCEPT_OR_NOTHROW {
 		reserved_.clear();
 	}
 

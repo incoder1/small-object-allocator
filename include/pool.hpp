@@ -16,7 +16,7 @@ class pool
 public:
 	explicit pool();
 	~pool() BOOST_NOEXCEPT_OR_NOTHROW;
-	void *malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size)
+	inline void *malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size)
 	{
 		if(NULL == arena_.get()) {
 			reserve(size);

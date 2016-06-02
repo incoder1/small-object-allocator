@@ -32,7 +32,7 @@ public:
 	}
 	void operator delete(void* const ptr) BOOST_NOEXCEPT_OR_NOTHROW
 	{
-        smallobject::sys::xfree(ptr, 0);
+        smallobject::sys::xfree(ptr);
 	}
 };
 #else

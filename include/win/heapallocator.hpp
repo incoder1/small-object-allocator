@@ -10,6 +10,7 @@
 #pragma once
 #endif // BOOST_HAS_PRAGMA_ONCE
 
+
 namespace smallobject { namespace sys {
 
 /// \brief Windows based private application heap
@@ -29,7 +30,7 @@ public:
 	}
 
 	BOOST_FORCEINLINE void release(void * const block) {
-		assert( ::HeapFree(hHeap_, 0, block) );
+		::HeapFree(hHeap_, 0, block);
 	}
 private:
 	::HANDLE hHeap_;
@@ -43,7 +44,7 @@ BOOST_FORCEINLINE void* xmalloc(std::size_t size)
 	return heap_allocator::instance()->allocate(size);
 }
 
-BOOST_FORCEINLINE void xfree(void * const ptr,const std::size_t size = 0)
+BOOST_FORCEINLINE void xfree(void * const ptr)
 {
 	heap_allocator::instance()->release(ptr);
 }

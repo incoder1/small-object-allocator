@@ -47,18 +47,24 @@ BOOST_FORCEINLINE void intrusive_ptr_release(object* const obj)
     }
 }
 
-} // namesapce smallobject
-
-namespace boost {
-
-using object = smallobject::object;
-
 typedef boost::intrusive_ptr<object> s_object;
 
-#ifndef BOOST_DECLARE_OBJECT_PTR_T
-#	define BOOST_DECLARE_OBJECT_PTR_T(TYPE) typedef boost::intrusive_ptr<TYPE> s_##TYPE
-#endif // DECLARE_SPTR_T
+} // namesapce smallobject
 
-} // namespace boost
+#ifndef DECLARE_OBJECT_PTR_T
+#	define DECLARE_OBJECT_PTR_T(TYPE) typedef boost::intrusive_ptr<TYPE> s_##TYPE
+#endif // DECLARE_OBJECT_PTR_T
+
+//namespace boost {
+//
+//using object = smallobject::object;
+//
+//typedef boost::intrusive_ptr<object> s_object;
+//
+//#ifndef BOOST_DECLARE_OBJECT_PTR_T
+//#	define BOOST_DECLARE_OBJECT_PTR_T(TYPE) typedef boost::intrusive_ptr<TYPE> s_##TYPE
+//#endif // DECLARE_SPTR_T
+//
+//} // namespace boost
 
 #endif // __LIBGC_OBJECT_HPP_INCLUDED__

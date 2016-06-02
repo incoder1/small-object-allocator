@@ -44,7 +44,7 @@ struct user_allocator
   static void free BOOST_PREVENT_MACRO_SUBSTITUTION(char * const block)
   { //! Attempts to de-allocate block.
     //! \pre Block must have been previously returned from a call to UserAllocator::malloc.
-	xfree(block, 0);
+	xfree(block);
   }
 };
 #endif // windows user allocator

@@ -30,18 +30,18 @@ protected:
 public:
 	virtual ~MyObject() BOOST_NOEXCEPT_OR_NOTHROW = 0;
 
-	void* operator new(std::size_t bytes) BOOST_THROWS(std::bad_alloc) {
-		void *result = ::je_malloc(bytes);
-		if(NULL == result) {
-			boost::throw_exception(std::bad_alloc());
-		}
-		return result;
-	}
-
-	void operator delete(void* const ptr) BOOST_NOEXCEPT_OR_NOTHROW
-	{
-		::je_free(ptr);
-	}
+//	void* operator new(std::size_t bytes) BOOST_THROWS(std::bad_alloc) {
+//		void *result = ::je_malloc(bytes);
+//		if(NULL == result) {
+//			boost::throw_exception(std::bad_alloc());
+//		}
+//		return result;
+//	}
+//
+//	void operator delete(void* const ptr) BOOST_NOEXCEPT_OR_NOTHROW
+//	{
+//		::je_free(ptr);
+//	}
 
 private:
 	friend BOOST_FORCEINLINE void intrusive_ptr_add_ref(MyObject* obj);
@@ -98,14 +98,14 @@ private:
 	uint64_t color;
 };
 
-BOOST_DECLARE_OBJECT_PTR_T(MyWidget);
-BOOST_DECLARE_OBJECT_PTR_T(MyButton);
-BOOST_DECLARE_OBJECT_PTR_T(MyPanel);
+DECLARE_OBJECT_PTR_T(MyWidget);
+DECLARE_OBJECT_PTR_T(MyButton);
+DECLARE_OBJECT_PTR_T(MyPanel);
 
-class Widget:public virtual boost::object {
+class Widget:public virtual smallobject::object {
 public:
   Widget() BOOST_NOEXCEPT_OR_NOTHROW:
- 	boost::object()
+ 	smallobject::object()
    {}
    virtual ~Widget() BOOST_NOEXCEPT_OR_NOTHROW
    {}
@@ -133,9 +133,9 @@ private:
 	uint64_t color;
 };
 
-BOOST_DECLARE_OBJECT_PTR_T(Widget);
-BOOST_DECLARE_OBJECT_PTR_T(Panel);
-BOOST_DECLARE_OBJECT_PTR_T(Button);
+DECLARE_OBJECT_PTR_T(Widget);
+DECLARE_OBJECT_PTR_T(Panel);
+DECLARE_OBJECT_PTR_T(Button);
 
 static const int THREADS =  std::thread::hardware_concurrency();
 static const int OBJECTS_COUNT = 250000;

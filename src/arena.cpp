@@ -13,7 +13,7 @@ BOOST_FORCEINLINE chunk* arena::create_new_chunk(const std::size_t size)
 BOOST_FORCEINLINE void arena::release_chunk(chunk* const cnk, const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW
 {
 	// assert(cnk);
-	// cnk->~chunk();
+	cnk->~chunk();
 	sys::xfree( static_cast<void*>(cnk) );
 }
 

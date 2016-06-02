@@ -9,7 +9,7 @@
 namespace smallobject { namespace sys {
 
 /// Posix system memory allocator based on mmap
-inline void* xmalloc(const std::size_t size)
+void* xmalloc(const std::size_t size)
 {
 	void *addr = NULL;
 	const std::size_t block_size = size + sizeof(std::size_t);
