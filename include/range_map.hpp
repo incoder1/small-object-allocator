@@ -731,7 +731,7 @@ public:
 	typedef typename base_type::value_type value_type;
 	typedef typename base_type::iterator iterator;
 
-	synchronized_range_map():
+	BOOST_CONSTEXPR synchronized_range_map():
 		base_type(),
 		rwb_()
 	{}

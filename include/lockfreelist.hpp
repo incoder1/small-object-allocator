@@ -236,6 +236,8 @@ inline bool operator==(
 
 } // namespace detail
 
+/// \brief Double linked non blocking thread safe forward list
+/// with erase in the midle support
 template<typename E, class A = sys::allocator<E> >
 class list {
 private:
@@ -257,7 +259,7 @@ public:
 	typedef detail::list_const_iterator<node_type> const_iterator;
 	typedef detail::list_iterator<node_type> iterator;
 
-	list():
+	BOOST_CONSTEXPR list():
 		head_(NULL),
 		node_allocator_()
 	{}
@@ -267,25 +269,35 @@ public:
 		do_destroy_list();
 	}
 
+	/// Returns whether current list is empty
+	/// \return \b true if list is empty otherwise false
 	inline bool empty() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		return NULL == head_.load(boost::memory_order_seq_cst);
 	}
 
+	/// Erase element by it constant iterator
+	/// \param position constant iterator on element
 	inline void erase(const const_iterator& position) {
 		if(end() == position) return;
 		do_erase_node( position.node() );
 	}
 
+	/// Erace element by it iterator
+	/// \param position iterator on element
 	inline void erase(const iterator& position) {
 		if(end() == position) return;
 		do_erase_node( position.node() );
 	}
 
+	/// Push element in the head of the list
+	/// \param element copy-assign reference on element
 	void push_front(BOOST_COPY_ASSIGN_REF(E) element) {
 		 push_front( BOOST_MOVE_BASE(E,element) );
 	}
 
+	/// Push element in the head of the list
+	/// \param element move reference on element
 	void push_front(BOOST_FWD_REF(E) element) {
 		node_type *new_node = create_node( boost::forward<E>(element) );
 		node_type *old_head = NULL;
@@ -304,24 +316,39 @@ public:
 		};
 	}
 
+	/// Returns iterator on the head of this list
+	/// \return iterator on this list head element
+	/// \throw never throws
 	iterator begin() BOOST_NOEXCEPT_OR_NOTHROW {
 		return iterator( head_.load(boost::memory_order_seq_cst) );
 	}
 
+	/// Returns iterator on the tail of this list (after last element)
+	/// \return iterator on this list tail
+	/// \throw never throws
 	iterator end() BOOST_NOEXCEPT_OR_NOTHROW {
 		return iterator( NULL );
 	}
 
+	/// Returns constant iterator on the head of this list
+	/// \return constant iterator on this list head element
+	/// \throw never throws
 	const_iterator cbegin() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		return const_iterator( head_.load(boost::memory_order_seq_cst) );
 	}
 
+	/// Returns constant iterator on the tail of this list (after last element)
+	/// \return constant iterator on this list tail
+	/// \throw never throws
 	const_iterator cend() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		return const_iterator(NULL);
 	}
 
+	/// Returns this list size in elements count
+	/// \return this list elements count
+	/// \throw never throws
 	inline std::size_t size() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		return std::distance( cbegin(), cend() );
@@ -351,6 +378,7 @@ private:
 		destroy_node(node);
 	}
 
+	// a spinlock await
 	inline void do_await(std::size_t& spin_count) {
 		if(++spin_count > _SOBJ_SPINCOUNT) {
 			boost::this_thread::yield();
