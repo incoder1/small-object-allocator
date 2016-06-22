@@ -15,14 +15,13 @@
 				<Compiler>
 					<Add option="-Wextra" />
 					<Add option="-Wall" />
-					<Add option="-std=c++11" />
+					<Add option="-std=c++14" />
 					<Add option="-pg" />
 					<Add option="-g" />
 					<Add option="-Og" />
 					<Add option="-fexceptions" />
 					<Add directory="D:/cpp/boost_1_60_0" />
 					<Add directory="include" />
-					<Add directory="../../jemalloc-4.0.4/include/jemalloc" />
 				</Compiler>
 				<Linker>
 					<Add option="-pg -lgmon" />
@@ -49,12 +48,10 @@
 					<Add option="-std=gnu++14" />
 					<Add directory="D:/cpp/boost_1_60_0" />
 					<Add directory="include" />
-					<Add directory="../../jemalloc-4.0.4/include/jemalloc" />
 				</Compiler>
 				<Linker>
 					<Add library="boost_system-mt.dll" />
 					<Add library="boost_thread-mt.dll" />
-					<Add library="D:/cpp/jemalloc-4.0.4/lib/jemalloc.lib" />
 					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
 					<Add directory="../bin/release-win-gcc-x64" />
 				</Linker>
@@ -107,24 +104,26 @@
 				<Option type="1" />
 				<Option compiler="clang" />
 				<Compiler>
-					<Add option="-fomit-frame-pointer" />
-					<Add option="-O4" />
-					<Add option="-Wall" />
-					<Add option="-std=c++11" />
+					<Add option="-march=corei7" />
+					<Add option="-fexpensive-optimizations" />
+					<Add option="-O3" />
 					<Add option="-fno-exceptions" />
 					<Add option="-fno-rtti" />
+					<Add option="-std=gnu++14" />
+					<Add directory="D:/cpp/boost_1_60_0" />
 					<Add directory="include" />
 				</Compiler>
 				<Linker>
-					<Add library="boost_system" />
-					<Add library="boost_thread" />
-					<Add library="pthread" />
-					<Add directory="../bin/release-clang-unix-amd64" />
+					<Add library="boost_system-mt.dll" />
+					<Add library="boost_thread-mt.dll" />
+					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
+					<Add directory="../bin/release-win-gcc-x64" />
 				</Linker>
 			</Target>
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />
+			<Add option="-DBOOST_SYSTEM_NO_DEPRECATED" />
 			<Add directory="../include" />
 		</Compiler>
 		<Linker>

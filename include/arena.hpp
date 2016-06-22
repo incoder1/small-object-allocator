@@ -69,7 +69,17 @@ public:
 	/// do system lock when thread releases memory allocated by another thread
 	/// \param ptr pointer to the allocated memory
 	/// \throw never trows
-	bool free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr) BOOST_NOEXCEPT_OR_NOTHROW;
+	inline bool free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr) BOOST_NOEXCEPT_OR_NOTHROW
+	{
+		const uint8_t *p = static_cast<const uint8_t*>(ptr);
+		if( !try_to_free(p, free_current_) ) {
+			chunks_rmap::iterator it = chunks_.find(p);
+			if(it == chunks_.end() ) return false;
+			try_to_free(p, it->second);
+			free_current_ = it->second;
+		}
+		return true;
+	}
 
 	/// Synchronized version of free, user when one thread is
 	/// allocating memory, and another releasing it
@@ -103,8 +113,7 @@ private:
 	/// Releases system virtual memory back
 	/// do system lock
 	/// \param cnk pointer on memory chunk holder
-	/// \param size size of fixed memory block
-	static BOOST_FORCEINLINE void release_chunk(chunk* const cnk,const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
+	static BOOST_FORCEINLINE void release_chunk(chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW;
 	/// Makes attempt to allocate a memory block of fixed size from chunk
 	/// do read lock
 	/// \return pointer on allocated memory block if success, otherwise NULL pointer
@@ -112,7 +121,14 @@ private:
 	BOOST_FORCEINLINE uint8_t* try_to_alloc(chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW;
 	/// Makes attempt to release a memory block of fixed size from chunk
 	/// \return true whether sucesses, otherwise false
-	BOOST_FORCEINLINE bool try_to_free(const uint8_t* ptr, chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW;
+	BOOST_FORCEINLINE bool try_to_free(const uint8_t* ptr, chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW
+	{
+		if(cnk->release(ptr,block_size_)) {
+			free_current_ = cnk;
+			return true;
+		}
+		return false;
+	}
 
 private:
 	const std::size_t block_size_;

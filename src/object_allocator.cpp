@@ -3,13 +3,13 @@
 namespace smallobject { namespace detail {
 
 // object_allocator
-const std::size_t object_allocator::MAX_SIZE = sizeof(std::size_t) * 16;
+BOOST_CONSTEXPR_OR_CONST std::size_t object_allocator::MAX_SIZE = sizeof(std::size_t) * 16;
 // 8 bytes for 32 bit and 16 bytes for 64 bit
-const std::size_t object_allocator::MIN_SIZE = align_up( sizeof(std::size_t), sizeof(std::size_t)*2 );
+BOOST_CONSTEXPR_OR_CONST std::size_t object_allocator::MIN_SIZE = align_up( sizeof(std::size_t), sizeof(std::size_t)*2 );
 // 2 since object size not changed
-const std::size_t object_allocator::SHIFT = MIN_SIZE / sizeof(std::size_t);
+BOOST_CONSTEXPR_OR_CONST std::size_t object_allocator::SHIFT = MIN_SIZE / sizeof(std::size_t);
 // 14 pools
-const std::size_t object_allocator::POOLS_COUNT = ( ( object_allocator::MAX_SIZE / sizeof(std::size_t) ) ) - SHIFT; // count of small object pools = 14
+BOOST_CONSTEXPR_OR_CONST std::size_t object_allocator::POOLS_COUNT = ( ( object_allocator::MAX_SIZE / sizeof(std::size_t) ) ) - SHIFT; // count of small object pools = 14
 
 object_allocator* object_allocator::instance()
 {

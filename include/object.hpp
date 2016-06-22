@@ -1,7 +1,7 @@
 #ifndef __SMALL_OBJECT_HPP_INCLUDED__
 #define __SMALL_OBJECT_HPP_INCLUDED__
 
-#include <boost/config.hpp>
+#include "config.hpp"
 
 #ifdef BOOST_HAS_PRAGMA_ONCE
 #pragma once
@@ -9,9 +9,10 @@
 
 #include "object_allocator.hpp"
 
+
 namespace smallobject {
 
-class object
+class SYMBOL_VISIBLE object
 {
 #if !defined(BOOST_NO_CXX11_DELETED_FUNCTIONS)
 	object( const object& ) = delete;
@@ -22,7 +23,9 @@ class object
       object& operator=( const object& );
 #endif // no deleted functions
 protected:
-	object() BOOST_NOEXCEPT_OR_NOTHROW;
+	BOOST_CONSTEXPR object() BOOST_NOEXCEPT_OR_NOTHROW:
+		ref_count_(0)
+	{}
 public:
 	virtual ~object() BOOST_NOEXCEPT_OR_NOTHROW = 0;
 	// redefine new and delete operations for small object optimized memory allocation
@@ -54,7 +57,5 @@ typedef boost::intrusive_ptr<object> s_object;
 #ifndef DECLARE_OBJECT_PTR_T
 #	define DECLARE_OBJECT_PTR_T(TYPE) typedef boost::intrusive_ptr<TYPE> s_##TYPE
 #endif // DECLARE_OBJECT_PTR_T
-
-
 
 #endif // __LIBGC_OBJECT_HPP_INCLUDED__

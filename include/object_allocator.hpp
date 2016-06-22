@@ -9,7 +9,7 @@ namespace smallobject { namespace detail {
 
 extern const std::size_t SHIFT;
 
-BOOST_FORCEINLINE std::size_t align_up(const std::size_t alignment,const std::size_t size) BOOST_NOEXCEPT
+BOOST_CONSTEXPR BOOST_FORCEINLINE std::size_t align_up(const std::size_t alignment,const std::size_t size) BOOST_NOEXCEPT
 {
 	return ( size + (alignment - 1) ) & ~(alignment - 1);
 }

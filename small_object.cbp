@@ -9,25 +9,25 @@
 			<Target title="debug-win-gcc-x64">
 				<Option platforms="Windows;" />
 				<Option output="bin/debug-win-gcc-x64/small_object" prefix_auto="1" extension_auto="1" />
-				<Option working_dir="" />
+				<Option working_dir="bin/debug-win-gcc-x64" />
 				<Option object_output="obj/relase-win-gcc-x64/" />
-				<Option type="2" />
+				<Option type="3" />
 				<Option compiler="gcc" />
 				<Option createDefFile="1" />
+				<Option createStaticLib="1" />
 				<Compiler>
 					<Add option="-Wextra" />
 					<Add option="-Wall" />
-					<Add option="-std=c++11" />
-					<Add option="-pg" />
+					<Add option="-std=c++14" />
 					<Add option="-g" />
 					<Add option="-Og" />
 					<Add option="-fexceptions" />
+					<Add option="-DBUILD_DLL" />
 					<Add directory="include" />
 					<Add directory="D:/cpp/boost_1_60_0" />
 					<Add directory="include/win" />
 				</Compiler>
 				<Linker>
-					<Add option="-pg -lgmon" />
 					<Add library="boost_system-mt-d.dll" />
 					<Add library="boost_thread-mt-d.dll" />
 					<Add library="kernel32" />
@@ -136,6 +136,7 @@
 		</Compiler>
 		<Unit filename="include/arena.hpp" />
 		<Unit filename="include/chunk.hpp" />
+		<Unit filename="include/config.hpp" />
 		<Unit filename="include/critical_section.hpp" />
 		<Unit filename="include/lockfreelist.hpp" />
 		<Unit filename="include/mutex_critical_section.hpp" />

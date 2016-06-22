@@ -6,8 +6,7 @@
 #include <vector>
 #include <chrono>
 
-#include <jemalloc.h>
-
+//#include <jemalloc.h>
 
 #ifdef BOOST_NO_EXCEPTIONS
 namespace boost {
@@ -25,23 +24,11 @@ struct rect {
 
 class MyObject:public boost::noncopyable {
 protected:
-	MyObject() BOOST_NOEXCEPT_OR_NOTHROW
+	BOOST_CONSTEXPR MyObject() BOOST_NOEXCEPT_OR_NOTHROW:
+		refCount_(0)
 	{}
 public:
 	virtual ~MyObject() BOOST_NOEXCEPT_OR_NOTHROW = 0;
-
-//	void* operator new(std::size_t bytes) BOOST_THROWS(std::bad_alloc) {
-//		void *result = ::je_malloc(bytes);
-//		if(NULL == result) {
-//			boost::throw_exception(std::bad_alloc());
-//		}
-//		return result;
-//	}
-//
-//	void operator delete(void* const ptr) BOOST_NOEXCEPT_OR_NOTHROW
-//	{
-//		::je_free(ptr);
-//	}
 
 private:
 	friend BOOST_FORCEINLINE void intrusive_ptr_add_ref(MyObject* obj);
@@ -140,7 +127,7 @@ DECLARE_OBJECT_PTR_T(Button);
 static const int THREADS =  std::thread::hardware_concurrency();
 static const int OBJECTS_COUNT = 250000;
 static const int OBJECTS_VECTOR_SIZE = 8;
-static const int TESTS_COUNT = 30;
+static const int TESTS_COUNT = 100;
 
 void so_routine()
 {
@@ -266,6 +253,10 @@ void print_benchmarks_result(const char* type,double libc_total, double so_total
 
 int main(int argc, const char** argv)
 {
+
+	// make memory cache first
+	std::free( std::malloc(USHRT_MAX) );
+
 	std::cout<<"Banchmarks testing objects:"<<std::endl;
 	std::cout<<"Small object  std new/delete"<<std::endl;
 	std::cout<<"Widget: " << sizeof(Widget) <<"    MyWidget: " << sizeof(MyWidget) <<" bytes" << std::endl;

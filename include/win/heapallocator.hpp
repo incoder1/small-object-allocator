@@ -1,10 +1,10 @@
 #ifndef __SMALL_OBJECT_WIN_HEAP_ALLOCATOR_HPP_INCLUDED__
 #define __SMALL_OBJECT_WIN_HEAP_ALLOCATOR_HPP_INCLUDED__
 
-#include <boost/config.hpp>
-#include <boost/atomic.hpp>
-
+#include "../config.hpp"
 #include "criticalsection.hpp"
+
+#include <boost/atomic.hpp>
 
 #ifdef BOOST_HAS_PRAGMA_ONCE
 #pragma once
@@ -15,7 +15,7 @@ namespace smallobject { namespace sys {
 
 /// \brief Windows based private application heap
 /// memory allocator
-class heap_allocator:private boost::noncopyable
+class SYMBOL_VISIBLE heap_allocator
 {
 private:
 	explicit heap_allocator(::HANDLE heap):

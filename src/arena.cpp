@@ -10,7 +10,7 @@ BOOST_FORCEINLINE chunk* arena::create_new_chunk(const std::size_t size)
 	return new (ptr) chunk(size, begin);
 }
 
-BOOST_FORCEINLINE void arena::release_chunk(chunk* const cnk, const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW
+BOOST_FORCEINLINE void arena::release_chunk(chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW
 {
 	// assert(cnk);
 	cnk->~chunk();
@@ -35,7 +35,7 @@ arena::arena(const std::size_t block_size):
 arena::~arena() BOOST_NOEXCEPT_OR_NOTHROW
 {
 	for(chunks_rmap::iterator it= chunks_.begin(); it != chunks_.end(); ++it) {
-		release_chunk( it->second , block_size_ );
+		release_chunk( it->second );
 	}
 }
 
@@ -75,29 +75,6 @@ void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_all
 	return static_cast<void*>(result);
 }
 
-
-inline bool arena::try_to_free(const uint8_t* ptr, chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW
-{
-	if(cnk->release(ptr,block_size_)) {
-		free_current_ = cnk;
-		return true;
-	}
-	return false;
-}
-
-bool arena::free BOOST_PREVENT_MACRO_SUBSTITUTION(void const *ptr) BOOST_NOEXCEPT_OR_NOTHROW
-{
-	const uint8_t *p = static_cast<const uint8_t*>(ptr);
-	if( !try_to_free(p, free_current_) ) {
-		chunks_rmap::iterator it = chunks_.find(p);
-		if(it == chunks_.end() ) return false;
-		try_to_free(p, it->second);
-		free_current_ = it->second;
-	}
-	return true;
-}
-
-
 void arena::shrink() BOOST_NOEXCEPT_OR_NOTHROW {
 	sys::write_lock lock(rwb_);
 	typedef std::vector<chunk*, sys::allocator<chunk*> > chvector;
@@ -109,7 +86,7 @@ void arena::shrink() BOOST_NOEXCEPT_OR_NOTHROW {
 		if(!it->second->empty()) {
 			non_empty.push_back(it->second);
 		} else {
-			release_chunk( it->second, block_size_);
+			release_chunk( it->second );
 		}
 		++it;
 	}
