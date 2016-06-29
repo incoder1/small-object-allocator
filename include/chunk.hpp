@@ -34,6 +34,10 @@ public:
 
 	chunk(const uint8_t block_size, const uint8_t* begin) BOOST_NOEXCEPT_OR_NOTHROW;
 
+	#if !defined(BOOST_NO_CXX11_DEFAULTED_FUNCTIONS) && !defined(BOOST_NO_CXX11_NON_PUBLIC_DEFAULTED_FUNCTIONS)
+	~chunk() = default;
+	#endif
+
 	/**
 	 * Allocates memory blocks
 	 * \param block_size size of minimal memory block, must be the same for the whole chunk
@@ -50,7 +54,8 @@ public:
 	/**
 	 * Releases previusly allocated memory if pointer is from this chunk
 	 * \param ptr pointer on allocated memory
-	 * \param bloc_size size of minimal allocated block
+	 * \param bloc_size size of fixed allocated block
+	 * \return true when memory has been freed, otherwise false
 	 */
 	BOOST_FORCEINLINE bool release(const uint8_t* ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
 	{

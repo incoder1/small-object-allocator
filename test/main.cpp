@@ -57,7 +57,9 @@ class MyWidget:public virtual MyObject {
 public:
 	MyWidget():
 		MyObject()
-	{}
+	{
+		r_.l = r_.b + r_.t;
+	}
 	virtual ~MyWidget() BOOST_NOEXCEPT_OR_NOTHROW {
 	}
 private:
@@ -91,9 +93,11 @@ DECLARE_OBJECT_PTR_T(MyPanel);
 
 class Widget:public virtual smallobject::object {
 public:
-  Widget() BOOST_NOEXCEPT_OR_NOTHROW:
- 	smallobject::object()
-   {}
+   Widget() BOOST_NOEXCEPT_OR_NOTHROW:
+		smallobject::object()
+   {
+		r_.l = r_.b + r_.t;
+   }
    virtual ~Widget() BOOST_NOEXCEPT_OR_NOTHROW
    {}
 private:
@@ -126,17 +130,21 @@ DECLARE_OBJECT_PTR_T(Button);
 
 static const int THREADS =  std::thread::hardware_concurrency();
 static const int OBJECTS_COUNT = 250000;
-static const int OBJECTS_VECTOR_SIZE = 8;
-static const int TESTS_COUNT = 100;
+static const int OBJECTS_VECTOR_SIZE = 512;
+static const int TESTS_COUNT = 16;
 
 void so_routine()
 {
 	// normal flow
 	for(int i=0; i < OBJECTS_COUNT; i++) {
-		s_Widget wd0(new Widget());
-		s_Button btn(new Button());
-		s_Panel pnl(new Panel());
-		s_Widget wd1(new Widget());
+		Widget* w = new Widget();
+		Button* b = new Button();
+		Panel*  p = new Panel();
+		Widget* w1 = new Widget();
+		delete b;
+		delete w;
+		delete w1;
+		delete p;
 	}
 	std::vector<s_Widget, smallobject::sys::allocator<s_Widget> > widgets(OBJECTS_VECTOR_SIZE);
 	for(int i=0; i < (OBJECTS_COUNT /OBJECTS_VECTOR_SIZE) ; i++) {
@@ -153,10 +161,14 @@ void so_routine()
 void libc_routine()
 {
 	for(int i=0; i < OBJECTS_COUNT; i++) {
-	    s_MyWidget wd0(new MyWidget());
-		s_MyButton btn(new MyButton());
-		s_MyPanel pnl(new MyPanel());
-		s_MyWidget wd1(new MyWidget());
+		MyWidget* w = new MyWidget();
+		MyButton* b = new MyButton();
+		MyPanel*  p = new MyPanel();
+		MyWidget* w1 = new MyWidget();
+		delete b;
+		delete w;
+		delete w1;
+		delete p;
 	}
 	std::vector<s_MyWidget> widgets(OBJECTS_VECTOR_SIZE);
 	for(int i=0; i < (OBJECTS_COUNT /OBJECTS_VECTOR_SIZE); i++) {
@@ -220,40 +232,8 @@ void print_benchmarks_result(const char* type,double libc_total, double so_total
 	}
 }
 
-//typedef smallobject::list<int> intlist;
-//typedef intlist::const_iterator cit;
-//
-//void test_erase(intlist* lst)
-//{
-//	for(int i=0; i < 4; i++) {
-//		lst->push_front( i+200 );
-//	}
-//	cit it = lst->cbegin();
-//	for(int i=0; i < 4; i++) {
-//		lst->erase( ++it );
-//	}
-//}
-//
-//void test_linked_list(intlist& lst) {
-//
-//	for(int i=0; i < 10; i++) {
-//		lst.push_front( i );
-//	}
-//	boost::thread thread( boost::bind(test_erase, (intlist*)&lst) );
-//	std::cout<<"concurrent"<<std::endl;
-//	for(int i=0; i < 4; i++) {
-//		lst.push_front( i+100 );
-//	}
-//	thread.join();
-//	std::cout<<"lockfree"<<std::endl;
-//	for(cit it = lst.cbegin(); it != lst.cend(); ++it) {
-//		std::cout<<*it<<',';
-//	}
-//}
-
 int main(int argc, const char** argv)
 {
-
 	// make memory cache first
 	std::free( std::malloc(USHRT_MAX) );
 

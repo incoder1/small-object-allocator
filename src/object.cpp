@@ -31,7 +31,7 @@ void object::operator delete(void* const ptr,std::size_t bytes) BOOST_NOEXCEPT_O
 
 } // namespace smallobject
 
-#if (defined(_WIN32) || defined(__WIN32__) || defined(WIN32)) && !defined(__CYGWIN__) && defined(BUILD_DLL)
+#if (defined(SO_DLL) && defined(BUILD_DLL)) && (defined(_WIN32) || defined(__WIN32__) || defined(WIN32)) && !defined(__CYGWIN__)
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
 	switch (fdwReason) {

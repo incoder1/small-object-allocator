@@ -73,10 +73,7 @@ public:
 	{
 		const uint8_t *p = static_cast<const uint8_t*>(ptr);
 		if( !try_to_free(p, free_current_) ) {
-			chunks_rmap::iterator it = chunks_.find(p);
-			if(it == chunks_.end() ) return false;
-			try_to_free(p, it->second);
-			free_current_ = it->second;
+			return lookup_chunk_and_free(p);
 		}
 		return true;
 	}
@@ -110,15 +107,18 @@ private:
 	/// do system lock
 	/// \param size fixed chunk block size
 	static BOOST_FORCEINLINE chunk* create_new_chunk(const std::size_t size);
+
 	/// Releases system virtual memory back
 	/// do system lock
 	/// \param cnk pointer on memory chunk holder
 	static BOOST_FORCEINLINE void release_chunk(chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW;
+
 	/// Makes attempt to allocate a memory block of fixed size from chunk
 	/// do read lock
 	/// \return pointer on allocated memory block if success, otherwise NULL pointer
 	/// \throw never throws
 	BOOST_FORCEINLINE uint8_t* try_to_alloc(chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW;
+
 	/// Makes attempt to release a memory block of fixed size from chunk
 	/// \return true whether sucesses, otherwise false
 	BOOST_FORCEINLINE bool try_to_free(const uint8_t* ptr, chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW
@@ -129,6 +129,8 @@ private:
 		}
 		return false;
 	}
+
+	bool lookup_chunk_and_free(const uint8_t* ptr) BOOST_NOEXCEPT_OR_NOTHROW;
 
 private:
 	const std::size_t block_size_;

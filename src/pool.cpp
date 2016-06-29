@@ -45,19 +45,14 @@ void pool::reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW
 }
 
 
-void pool::free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW
-{
-	bool released = arena_->free(ptr);
-	// handle allocation from another thread
-	while(!released) {
-		arenas_pool::iterator it = arenas_.begin();
-		arenas_pool::iterator end = arenas_.end();
-		while(it != end) {
-			assert(*it);
-			released = (*it)->synch_free(ptr);
-			++it;
+void pool::thread_miss_free(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW {
+	arenas_pool::iterator it = arenas_.begin();
+	arenas_pool::iterator end = arenas_.end();
+	do {
+		if( (*it)->synch_free(ptr) ) {
+			return;
 		}
-	}
+	} while(++it != end);
 }
 
 }} //  namespace smallobject { namespace detail

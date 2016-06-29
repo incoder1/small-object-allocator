@@ -75,6 +75,15 @@ void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_all
 	return static_cast<void*>(result);
 }
 
+bool arena::lookup_chunk_and_free(const uint8_t *ptr) BOOST_NOEXCEPT_OR_NOTHROW
+{
+	chunks_rmap::iterator it = chunks_.find(ptr);
+	if(it == chunks_.end() ) return false;
+	try_to_free(ptr, it->second);
+	return true;
+}
+
+
 void arena::shrink() BOOST_NOEXCEPT_OR_NOTHROW {
 	sys::write_lock lock(rwb_);
 	typedef std::vector<chunk*, sys::allocator<chunk*> > chvector;
@@ -84,7 +93,7 @@ void arena::shrink() BOOST_NOEXCEPT_OR_NOTHROW {
 	while(it != end)
 	{
 		if(!it->second->empty()) {
-			non_empty.push_back(it->second);
+			non_empty.push_back( BOOST_MOVE_BASE(chunk*, it->second) );
 		} else {
 			release_chunk( it->second );
 		}

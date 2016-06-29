@@ -50,7 +50,7 @@ struct user_allocator
 #endif // windows user allocator
 
 #ifndef __SM_INTERNAL_POOL_NEXT_SIZE
-#	define __SM_SYS_POOL_NEXT_SIZE 256
+#	define __SM_SYS_POOL_NEXT_SIZE 64
 #	define __SM_SYS_POOL_MAX_SIZE UINT_MAX
 #endif // __SM_INTERNAL_POOL_NEXT_SIZE
 
@@ -80,7 +80,7 @@ private:
 		__SM_SYS_POOL_NEXT_SIZE,
 		__SM_SYS_POOL_MAX_SIZE> base_type;
 public:
-	allocator():
+	BOOST_CONSTEXPR allocator():
 		base_type()
 	{}
 };

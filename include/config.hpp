@@ -7,7 +7,7 @@
 #pragma once
 #endif // BOOST_HAS_PRAGMA_ONCE
 
-#if (defined(_WIN32) || defined(__WIN32__) || defined(WIN32)) && !defined(__CYGWIN__)
+#if defined(SO_DLL) && (defined(_WIN32) || defined(__WIN32__) || defined(WIN32)) && !defined(__CYGWIN__)
 #if defined(BUILD_DLL) && defined(__GNUC__)
 #	define SYMBOL_VISIBLE __attribute__((__dllexport__))
 #elif defined(__GNUC__)

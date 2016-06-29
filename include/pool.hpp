@@ -16,15 +16,20 @@ class pool
 public:
 	explicit pool();
 	~pool() BOOST_NOEXCEPT_OR_NOTHROW;
-	inline void *malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size)
+	BOOST_FORCEINLINE void *malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size)
 	{
-		if(NULL == arena_.get()) {
-			reserve(size);
-		}
+		if(NULL == arena_.get()) { reserve(size); }
 		return arena_->malloc();
 	}
-	void free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW;
+	BOOST_FORCEINLINE void free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW
+	{
+	  if( ! arena_->free(ptr) ) {
+			// handle allocation from another thread
+			thread_miss_free(ptr);
+	  }
+	}
 private:
+	void thread_miss_free(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW;
 	void reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
 	static inline void release_arena(arena* ar) BOOST_NOEXCEPT_OR_NOTHROW;
 private:
