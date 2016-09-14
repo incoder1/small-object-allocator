@@ -27,7 +27,7 @@ pool::~pool() BOOST_NOEXCEPT_OR_NOTHROW
 	}
 }
 
-void pool::reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW
+void pool::reserve(const std::size_t size)
 {
 	arenas_pool::const_iterator it = arenas_.cbegin();
 	arenas_pool::const_iterator end = arenas_.cend();

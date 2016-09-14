@@ -32,23 +32,19 @@ public:
 	void* operator new(std::size_t bytes) BOOST_THROWS(std::bad_alloc);
 	void operator delete(void *ptr,std::size_t bytes) BOOST_NOEXCEPT_OR_NOTHROW;
 private:
-	mutable boost::atomic_size_t ref_count_;
-	friend BOOST_FORCEINLINE void intrusive_ptr_add_ref(object* const obj);
-	friend BOOST_FORCEINLINE void intrusive_ptr_release(object* const obj);
+	boost::atomic_size_t ref_count_;
+	friend BOOST_FORCEINLINE void intrusive_ptr_add_ref(object* const obj) noexcept
+	{
+		obj->ref_count_.fetch_add(1, boost::memory_order_relaxed);
+	}
+	friend BOOST_FORCEINLINE void intrusive_ptr_release(object* const obj) noexcept
+	{
+		if (obj->ref_count_.fetch_sub(1, boost::memory_order_release) == 1) {
+			boost::atomic_thread_fence(boost::memory_order_acquire);
+			delete obj;
+		}
+	}
 };
-
-BOOST_FORCEINLINE void intrusive_ptr_add_ref(object* const obj)
-{
-	obj->ref_count_.fetch_add(1, boost::memory_order_relaxed);
-}
-
-BOOST_FORCEINLINE void intrusive_ptr_release(object* const obj)
-{
-	 if (obj->ref_count_.fetch_sub(1, boost::memory_order_release) == 1) {
-      boost::atomic_thread_fence(boost::memory_order_acquire);
-      delete obj;
-    }
-}
 
 typedef boost::intrusive_ptr<object> s_object;
 

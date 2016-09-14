@@ -61,7 +61,9 @@ public:
 	{
 		if( (ptr > end_) || (ptr < begin_) ) return false;
 		*(const_cast<uint8_t*>(ptr)) = position_;
-		position_ =  static_cast<uint8_t>( (ptr - begin_) / block_size );
+		std::size_t p =  ( reinterpret_cast<size_t>(ptr) - reinterpret_cast<size_t>(begin_) );
+		p /= block_size;
+		position_ =  static_cast<uint8_t>(p);
 		++free_blocks_;
 		return true;
 	}

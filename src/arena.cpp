@@ -83,7 +83,6 @@ bool arena::lookup_chunk_and_free(const uint8_t *ptr) BOOST_NOEXCEPT_OR_NOTHROW
 	return true;
 }
 
-
 void arena::shrink() BOOST_NOEXCEPT_OR_NOTHROW {
 	sys::write_lock lock(rwb_);
 	typedef std::vector<chunk*, sys::allocator<chunk*> > chvector;
@@ -93,7 +92,11 @@ void arena::shrink() BOOST_NOEXCEPT_OR_NOTHROW {
 	while(it != end)
 	{
 		if(!it->second->empty()) {
+#if __cplusplus >= 201103L
+			non_empty.emplace_back( it->second );
+#else
 			non_empty.push_back( BOOST_MOVE_BASE(chunk*, it->second) );
+#endif // __cplusplus
 		} else {
 			release_chunk( it->second );
 		}
@@ -103,7 +106,7 @@ void arena::shrink() BOOST_NOEXCEPT_OR_NOTHROW {
 	chvector::iterator i = non_empty.begin();
 	chvector::iterator last = non_empty.end();
 	while(i != last) {
-		chunks_.insert( (*i)->begin(),(*i)->end(), BOOST_MOVE_BASE(chunk*,*i) );
+		chunks_.insert( (*i)->begin(), (*i)->end(), BOOST_MOVE_BASE(chunk*,*i) );
 		++i;
 	}
 	if(chunks_.empty()) {

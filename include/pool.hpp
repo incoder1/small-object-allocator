@@ -30,7 +30,7 @@ public:
 	}
 private:
 	void thread_miss_free(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW;
-	void reserve(const std::size_t size) BOOST_NOEXCEPT_OR_NOTHROW;
+	void reserve(const std::size_t size);
 	static inline void release_arena(arena* ar) BOOST_NOEXCEPT_OR_NOTHROW;
 private:
 	typedef smallobject::list<arena*> arenas_pool;

@@ -78,7 +78,7 @@ public:
 		return true;
 	}
 
-	/// Synchronized version of free, user when one thread is
+	/// Synchronized version of free, used when one thread is
 	/// allocating memory, and another releasing it
 	BOOST_FORCEINLINE bool synch_free(void const *ptr) BOOST_NOEXCEPT_OR_NOTHROW
 	{
@@ -87,7 +87,7 @@ public:
 	}
 
 	/// Makes attemp to reserve this arena for thread
-	/// \return true if success and false if arena alrady reserved by some thread
+	/// \return true if success and false if arena alrady reserved by a thread
 	/// \throw never thows
 	BOOST_FORCEINLINE bool reserve() BOOST_NOEXCEPT_OR_NOTHROW {
 		return ! reserved_.test_and_set();

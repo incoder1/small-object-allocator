@@ -18,9 +18,10 @@ namespace smallobject { namespace sys {
 class SYMBOL_VISIBLE heap_allocator
 {
 private:
-	explicit heap_allocator(::HANDLE heap):
+	BOOST_CONSTEXPR explicit heap_allocator(::HANDLE heap) BOOST_NOEXCEPT_OR_NOTHROW:
 		hHeap_(heap)
 	{}
+
 	static void release() BOOST_NOEXCEPT_OR_NOTHROW;
 public:
 	static heap_allocator* instance();

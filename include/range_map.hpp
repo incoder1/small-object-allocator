@@ -188,7 +188,7 @@ public:
 	typedef movable_pair<const R, V> value_type;
 	typedef value_type* base_ptr;
 
-	explicit avl_tree_node(BOOST_FWD_REF(value_type) v):
+	explicit BOOST_CONSTEXPR avl_tree_node(BOOST_FWD_REF(value_type) v):
 		top_(NULL),
 		left_(NULL),
 		right_(NULL),
@@ -196,8 +196,36 @@ public:
 		value_( BOOST_MOVE_BASE(value_type, v) )
 	{}
 
-	~avl_tree_node()
-	{}
+	avl_tree_node(BOOST_FWD_REF(avl_tree_node) other) BOOST_NOEXCEPT:
+		top_(other.top_),
+		left_(other.left_),
+		right_(other.right_),
+		height_(other.height_),
+		value_( BOOST_MOVE_BASE(value_type, other.value_) )
+	{
+		other.top_ = NULL;
+		other.left_ = NULL;
+		other.right_ = NULL;
+		other.height_ = 0;
+	}
+
+	avl_tree_node& operator=(BOOST_FWD_REF(avl_tree_node) rhs) BOOST_NOEXCEPT
+	{
+		avl_tree_node tmp( boost::forward<avl_tree_node>(rhs) );
+		tmp.swap(  *this );
+		return *this;
+	}
+
+	inline void swap(avl_tree_node& other) BOOST_NOEXCEPT_OR_NOTHROW {
+		std::swap(top_, other.top_ );
+		std::swap(left_, other.left_);
+		std::swap(right_, other.right_);
+		std::swap(height_, other.height_);
+	 	value_.swap( other.value_ );
+	}
+
+
+	inline ~avl_tree_node() BOOST_NOEXCEPT {}
 
 	BOOST_FORCEINLINE const value_type* value() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
@@ -476,9 +504,10 @@ public:
 		root_ = NULL;
 	}
 
-	~basic_range_map()
+	~basic_range_map() BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		if(NULL == root_) return;
+		if(NULL == root_)
+			return;
 		do_destroy_tree(root_);
 		destroy_node(root_);
 	}
@@ -501,7 +530,7 @@ private:
 		}
 		// do insert node
 		_node_t* inserted_into = do_insert_node( boost::forward<value_type>(v) );
-		if(inserted_into) {
+		if(NULL != inserted_into) {
 			do_rebalance_from(inserted_into);
 			return true;
 		}
@@ -511,34 +540,35 @@ private:
 	_node_t* do_insert_node(BOOST_FWD_REF(value_type) v)
 	{
 		_node_t *it = root_;
-		bool inserted = false;
-		while(!inserted) {
-			int8_t cmp = v.first.compare_to( it->value()->first );
-			if(0 == cmp) {
-				break; // interception
-			} else if( cmp < 0) {
-				// left insert
-				inserted = do_insert_left(it, boost::forward<value_type>(v) );
-				if(!inserted) {
-					it = it->left();
-				}
-			} else {
-				// right insert
-				inserted = do_insert_right(it, boost::forward<value_type>(v) );
-				if(!inserted) {
+		for(;;) {
+			switch( v.first.compare_to( it->value()->first) )
+			{
+			case 0:
+				return NULL;
+			case 1:
+				// insert right
+				if( ! do_insert_right(it, boost::forward<value_type>(v) ) ) {
 					it = it->right();
+					continue;
 				}
+				return it;
+			default:
+				if( ! do_insert_left(it, boost::forward<value_type>(v) ) ) {
+					it = it->left();
+					continue;
+				}
+				return it;
 			}
 		}
 		return it;
 	}
 
 	inline bool do_insert_left(_node_t * node, BOOST_FWD_REF(value_type) v) {
-        bool result = NULL == node->left();
-        if(result) {
+        if( NULL == node->left() ) {
 			node->set_left( create_node( boost::forward<value_type>(v) ) );
-        }
-        return result;
+			return true;
+		}
+        return false;
 	}
 
 	inline bool do_insert_right(_node_t * node, BOOST_FWD_REF(value_type) v) {
@@ -603,8 +633,7 @@ private:
 			if(compare == 0) {
 				found = true;
 				break;
-			}
-			if(compare < 0) {
+			} else if(compare < 0) {
 				it = it->left();
 			} else {
 				it = it->right();

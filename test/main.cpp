@@ -128,15 +128,17 @@ DECLARE_OBJECT_PTR_T(Widget);
 DECLARE_OBJECT_PTR_T(Panel);
 DECLARE_OBJECT_PTR_T(Button);
 
-static const int THREADS =  std::thread::hardware_concurrency();
-static const int OBJECTS_COUNT = 250000;
-static const int OBJECTS_VECTOR_SIZE = 512;
-static const int TESTS_COUNT = 16;
+static const size_t THREADS =  std::thread::hardware_concurrency() * 2;
+static constexpr size_t TOTAL_TEST_SIZE = sizeof(Widget)+sizeof(Panel)+sizeof(Button)+sizeof(Widget);
+// 32mi / TOTAL_SIZE
+static const size_t OBJECTS_COUNT = ( (1 << 20)*32 ) / TOTAL_TEST_SIZE;
+static const size_t OBJECTS_VECTOR_SIZE = 512;
+static const size_t TESTS_COUNT = 32;
 
 void so_routine()
 {
 	// normal flow
-	for(int i=0; i < OBJECTS_COUNT; i++) {
+	for(size_t i=0; i < OBJECTS_COUNT; i++) {
 		Widget* w = new Widget();
 		Button* b = new Button();
 		Panel*  p = new Panel();
@@ -146,21 +148,21 @@ void so_routine()
 		delete w1;
 		delete p;
 	}
-	std::vector<s_Widget, smallobject::sys::allocator<s_Widget> > widgets(OBJECTS_VECTOR_SIZE);
-	for(int i=0; i < (OBJECTS_COUNT /OBJECTS_VECTOR_SIZE) ; i++) {
-        for(int i=0; i < OBJECTS_VECTOR_SIZE/4; i++) {
-            widgets.emplace_back(new Widget());
-            widgets.emplace_back(new Button());
-            widgets.emplace_back(new Panel());
-            widgets.emplace_back(new Widget());
-        }
-        widgets.clear();
-    }
+	Widget* widgets[OBJECTS_VECTOR_SIZE];
+	for(size_t i=0; i < OBJECTS_VECTOR_SIZE; i += 4) {
+		widgets[i] = new Widget();
+		widgets[i+1] = new Button();
+		widgets[i+2] =  new Panel();
+		widgets[i+3] = new Widget();
+	}
+	for(size_t i=0; i < OBJECTS_VECTOR_SIZE; i++) {
+		delete widgets[i];
+	}
 }
 
 void libc_routine()
 {
-	for(int i=0; i < OBJECTS_COUNT; i++) {
+	for(size_t i=0; i < OBJECTS_COUNT; i++) {
 		MyWidget* w = new MyWidget();
 		MyButton* b = new MyButton();
 		MyPanel*  p = new MyPanel();
@@ -170,16 +172,16 @@ void libc_routine()
 		delete w1;
 		delete p;
 	}
-	std::vector<s_MyWidget> widgets(OBJECTS_VECTOR_SIZE);
-	for(int i=0; i < (OBJECTS_COUNT /OBJECTS_VECTOR_SIZE); i++) {
-        for(int i=0; i < OBJECTS_VECTOR_SIZE/4; i++) {
-            widgets.emplace_back(new MyWidget());
-            widgets.emplace_back(new MyButton());
-            widgets.emplace_back(new MyPanel());
-            widgets.emplace_back(new MyWidget());
-        }
-        widgets.clear();
-    }
+	MyWidget* widgets[OBJECTS_VECTOR_SIZE];
+	for(size_t i=0; i < OBJECTS_VECTOR_SIZE; i += 4) {
+		widgets[i] = new MyWidget();
+		widgets[i+1] = new MyButton();
+		widgets[i+2] =  new MyPanel();
+		widgets[i+3] = new MyWidget();
+	}
+	for(size_t i=0; i < OBJECTS_VECTOR_SIZE; i++) {
+		delete widgets[i];
+	}
 }
 
 typedef void (*routine_f)();
@@ -188,7 +190,7 @@ typedef double (*benchmark_f)(routine_f);
 double multi_threads_benchmark(routine_f routine) {
 	auto start = std::chrono::steady_clock::now();
 	std::vector<std::thread> workers;
-	for(int i=0; i < THREADS; i++) {
+	for(size_t i=0; i < THREADS; i++) {
 		workers.push_back( std::thread( std::bind( routine ) ) );
 	}
 	for (std::thread &t: workers) {
@@ -196,22 +198,20 @@ double multi_threads_benchmark(routine_f routine) {
         t.join();
       }
     }
-    auto end = std::chrono::steady_clock::now();
-    auto diff = end - start;
+    auto diff = std::chrono::steady_clock::now() - start;
     return std::chrono::duration <double, std::milli>(diff).count();
 }
 
 double single_thread_benchmark(routine_f routine) {
 	auto start = std::chrono::steady_clock::now();
     routine();
-    auto end = std::chrono::steady_clock::now();
-    auto diff = end - start;
+    auto diff = std::chrono::steady_clock::now() - start;
     return std::chrono::duration <double, std::milli> (diff).count();
 }
 
 double run_benchmarks(benchmark_f benchmark, routine_f routine) {
 	double result = 0.0;
-	for(int i=0; i < TESTS_COUNT; i++) {
+	for(size_t i=0; i < TESTS_COUNT; i++) {
 		result += benchmark(routine);
 	}
 	return result;

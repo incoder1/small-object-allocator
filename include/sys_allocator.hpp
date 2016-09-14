@@ -80,7 +80,7 @@ private:
 		__SM_SYS_POOL_NEXT_SIZE,
 		__SM_SYS_POOL_MAX_SIZE> base_type;
 public:
-	BOOST_CONSTEXPR allocator():
+	BOOST_CONSTEXPR allocator() BOOST_NOEXCEPT:
 		base_type()
 	{}
 };

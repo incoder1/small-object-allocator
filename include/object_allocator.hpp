@@ -43,10 +43,11 @@ public:
 	~object_allocator() BOOST_NOEXCEPT_OR_NOTHROW;
 private:
 	explicit object_allocator();
+
 	BOOST_FORCEINLINE pool* get(const std::size_t size) const BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		std::size_t index = ( align_up(sizeof(std::size_t),size) / sizeof(std::size_t) ) - SHIFT;
-		return pools_ + index;
+		//static BOOST_CONSTEXPR_OR_CONST std::size_t S_DIV = (sizeof(std::size_t) >> 2) + 1;
+		return pools_ + ( ( align_up(sizeof(std::size_t),size) / sizeof(std::size_t)  ) - SHIFT );
 	}
 	static void release() BOOST_NOEXCEPT_OR_NOTHROW;
 private:
