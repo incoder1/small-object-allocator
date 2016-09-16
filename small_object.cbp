@@ -45,11 +45,12 @@
 				<Option compiler="gcc" />
 				<Option createDefFile="1" />
 				<Compiler>
-					<Add option="-O3" />
 					<Add option="-Wall" />
 					<Add option="-std=c++14" />
 					<Add option="-fno-exceptions" />
 					<Add option="-fno-rtti" />
+					<Add option="-mtune=native" />
+					<Add option="-Ofast" />
 					<Add directory="include" />
 					<Add directory="D:/cpp/boost_1_60_0" />
 					<Add directory="include/win" />
