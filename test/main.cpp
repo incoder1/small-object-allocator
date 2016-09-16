@@ -128,25 +128,39 @@ DECLARE_OBJECT_PTR_T(Widget);
 DECLARE_OBJECT_PTR_T(Panel);
 DECLARE_OBJECT_PTR_T(Button);
 
-static const size_t THREADS =  std::thread::hardware_concurrency() * 2;
+static const size_t THREADS =  std::thread::hardware_concurrency();
 static constexpr size_t TOTAL_TEST_SIZE = sizeof(Widget)+sizeof(Panel)+sizeof(Button)+sizeof(Widget);
-// 32mi / TOTAL_SIZE
-static const size_t OBJECTS_COUNT = ( (1 << 20)*32 ) / TOTAL_TEST_SIZE;
-static const size_t OBJECTS_VECTOR_SIZE = 512;
-static const size_t TESTS_COUNT = 32;
+static const size_t OBJECTS_COUNT = ((1 << 20) * 24) / TOTAL_TEST_SIZE;
+static const size_t OBJECTS_VECTOR_SIZE = 32;
+static const size_t TESTS_COUNT = 24;
+
+
+template<class W, class B, class P>
+void initialize(W* w, B *b, P *p, W* w1) {
+	w = new W();
+	b = new B();
+	p = new P();
+	w1 = new W();
+}
+
+
+// avoid compiller to eleminate call to malloc
+template<class W, class B, class P>
+void perform(W* w, B *b, P *p, W* w1) {
+	initialize(w,b,p,w1);
+	delete b;
+	delete w;
+	delete p;
+	delete w1;
+}
 
 void so_routine()
 {
-	// normal flow
+	Widget* w[2] = {nullptr,nullptr};
+	Button* b = nullptr;
+	Panel*  p = nullptr;
 	for(size_t i=0; i < OBJECTS_COUNT; i++) {
-		Widget* w = new Widget();
-		Button* b = new Button();
-		Panel*  p = new Panel();
-		Widget* w1 = new Widget();
-		delete b;
-		delete w;
-		delete w1;
-		delete p;
+		perform(w[0],b,p,w[1]);
 	}
 	Widget* widgets[OBJECTS_VECTOR_SIZE];
 	for(size_t i=0; i < OBJECTS_VECTOR_SIZE; i += 4) {
@@ -162,15 +176,12 @@ void so_routine()
 
 void libc_routine()
 {
+	MyWidget *w[2] = {nullptr, nullptr};
+	MyButton* b = nullptr;
+	MyPanel*  p = nullptr;
+	// normal flow
 	for(size_t i=0; i < OBJECTS_COUNT; i++) {
-		MyWidget* w = new MyWidget();
-		MyButton* b = new MyButton();
-		MyPanel*  p = new MyPanel();
-		MyWidget* w1 = new MyWidget();
-		delete b;
-		delete w;
-		delete w1;
-		delete p;
+		perform(w[0],b,p,w[1]);
 	}
 	MyWidget* widgets[OBJECTS_VECTOR_SIZE];
 	for(size_t i=0; i < OBJECTS_VECTOR_SIZE; i += 4) {
@@ -189,9 +200,9 @@ typedef double (*benchmark_f)(routine_f);
 
 double multi_threads_benchmark(routine_f routine) {
 	auto start = std::chrono::steady_clock::now();
-	std::vector<std::thread> workers;
+	std::thread workers[THREADS];
 	for(size_t i=0; i < THREADS; i++) {
-		workers.push_back( std::thread( std::bind( routine ) ) );
+		workers[i] = std::thread( std::bind( routine ) );
 	}
 	for (std::thread &t: workers) {
       if (t.joinable()) {
@@ -235,7 +246,7 @@ void print_benchmarks_result(const char* type,double libc_total, double so_total
 int main(int argc, const char** argv)
 {
 	// make memory cache first
-	std::free( std::malloc(USHRT_MAX) );
+	std::free( std::malloc( ( 1 << 30) / 2)  );
 
 	std::cout<<"Banchmarks testing objects:"<<std::endl;
 	std::cout<<"Small object  std new/delete"<<std::endl;
@@ -246,20 +257,21 @@ int main(int argc, const char** argv)
 	// Single thread benchmark
 	std::cout<<"Single threading benchmark"<<std::endl;
 	std::cout<<"Running LibC benchmark"<<std::endl;
-	boost::atomic_thread_fence(boost::memory_order_release);
 	double libc_total = run_benchmarks(single_thread_benchmark, libc_routine);
+
 	std::cout<<"Running SO benchmark"<<std::endl;
-	boost::atomic_thread_fence(boost::memory_order_release);
 	double so_total = run_benchmarks(single_thread_benchmark, so_routine);
 	print_benchmarks_result("single", libc_total, so_total);
 
+	std::free( std::malloc( ( 1 << 30) / 2)  );
 	std::cout<<std::endl<<"Multi threading with " << THREADS << " threads benchmark"<<std::endl;
-	boost::atomic_thread_fence(boost::memory_order_release);
+
 	std::cout<<"Running LibC benchmark"<<std::endl;
 	libc_total = run_benchmarks(multi_threads_benchmark, libc_routine);
-	boost::atomic_thread_fence(boost::memory_order_release);
+
 	std::cout<<"Running SO benchmark"<<std::endl;
 	so_total = run_benchmarks(multi_threads_benchmark, so_routine);
+
 	print_benchmarks_result("multi", libc_total, so_total);
 	return 0;
 }
