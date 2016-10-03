@@ -40,11 +40,11 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
+					<Add option="-O2" />
 					<Add option="-std=c++14" />
 					<Add option="-fno-exceptions" />
 					<Add option="-fno-rtti" />
 					<Add option="-mtune=native" />
-					<Add option="-Ofast" />
 					<Add directory="D:/cpp/boost_1_60_0" />
 					<Add directory="include" />
 				</Compiler>
