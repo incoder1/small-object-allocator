@@ -24,7 +24,7 @@ private:
 
 	static void release() BOOST_NOEXCEPT_OR_NOTHROW;
 public:
-	static heap_allocator* instance();
+	static heap_allocator* instance() BOOST_NOEXCEPT_OR_NOTHROW;
 
 	BOOST_FORCEINLINE void* allocate(std::size_t bytes) {
 		return ::HeapAlloc(hHeap_, 0, bytes);

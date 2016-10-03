@@ -165,7 +165,7 @@ public:
 		std::swap(second, rhs.second);
 	}
 
-	~movable_pair()
+	BOOST_FORCEINLINE ~movable_pair()
 	{}
 
 	first_type first;

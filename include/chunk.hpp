@@ -45,7 +45,8 @@ public:
 	 */
 	BOOST_FORCEINLINE uint8_t* allocate(const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		if (0 == free_blocks_) return NULL;
+		if (0 == free_blocks_)
+			return NULL;
 		uint8_t *result = const_cast<uint8_t*>( begin_ + (position_ * block_size) );
 		position_ = *result;
 		--free_blocks_;
@@ -59,10 +60,10 @@ public:
 	 */
 	BOOST_FORCEINLINE bool release(const uint8_t* ptr,const std::size_t block_size) BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		if( (ptr > end_) || (ptr < begin_) ) return false;
+		if( ptr <= end_ && ptr >= begin_)
+			return false;
 		*(const_cast<uint8_t*>(ptr)) = position_;
-		std::size_t p =  ( reinterpret_cast<size_t>(ptr) - reinterpret_cast<size_t>(begin_) );
-		p /= block_size;
+		const std::size_t p =  ( reinterpret_cast<size_t>(ptr) - reinterpret_cast<size_t>(begin_) ) / block_size;
 		position_ =  static_cast<uint8_t>(p);
 		++free_blocks_;
 		return true;

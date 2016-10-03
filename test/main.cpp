@@ -130,13 +130,11 @@ DECLARE_OBJECT_PTR_T(Button);
 
 static const size_t THREADS =  std::thread::hardware_concurrency();
 static constexpr size_t TOTAL_TEST_SIZE = sizeof(Widget)+sizeof(Panel)+sizeof(Button)+sizeof(Widget);
-static const size_t OBJECTS_COUNT = ((1 << 20) * 24) / TOTAL_TEST_SIZE;
-static const size_t OBJECTS_VECTOR_SIZE = 32;
-static const size_t TESTS_COUNT = 24;
-
+static const size_t OBJECTS_COUNT = ((1 << 20) * 32)  / TOTAL_TEST_SIZE;
+static const size_t TESTS_COUNT = 16;
 
 template<class W, class B, class P>
-void initialize(W* w, B *b, P *p, W* w1) {
+void BOOST_NOINLINE initialize(W* w, B *b, P *p, W* w1) {
 	w = new W();
 	b = new B();
 	p = new P();
@@ -146,54 +144,39 @@ void initialize(W* w, B *b, P *p, W* w1) {
 
 // avoid compiller to eleminate call to malloc
 template<class W, class B, class P>
-void perform(W* w, B *b, P *p, W* w1) {
-	initialize(w,b,p,w1);
+void BOOST_NOINLINE release(W* w, B *b, P *p, W* w1) {
 	delete b;
 	delete w;
 	delete p;
 	delete w1;
 }
 
-void so_routine()
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+void BOOST_NOINLINE so_routine()
 {
 	Widget* w[2] = {nullptr,nullptr};
 	Button* b = nullptr;
 	Panel*  p = nullptr;
 	for(size_t i=0; i < OBJECTS_COUNT; i++) {
-		perform(w[0],b,p,w[1]);
-	}
-	Widget* widgets[OBJECTS_VECTOR_SIZE];
-	for(size_t i=0; i < OBJECTS_VECTOR_SIZE; i += 4) {
-		widgets[i] = new Widget();
-		widgets[i+1] = new Button();
-		widgets[i+2] =  new Panel();
-		widgets[i+3] = new Widget();
-	}
-	for(size_t i=0; i < OBJECTS_VECTOR_SIZE; i++) {
-		delete widgets[i];
+		initialize(w[0],b,p,w[1]);
+		release(w[0],b,p,w[1]);
 	}
 }
 
-void libc_routine()
+void BOOST_NOINLINE libc_routine()
 {
 	MyWidget *w[2] = {nullptr, nullptr};
 	MyButton* b = nullptr;
 	MyPanel*  p = nullptr;
 	// normal flow
 	for(size_t i=0; i < OBJECTS_COUNT; i++) {
-		perform(w[0],b,p,w[1]);
-	}
-	MyWidget* widgets[OBJECTS_VECTOR_SIZE];
-	for(size_t i=0; i < OBJECTS_VECTOR_SIZE; i += 4) {
-		widgets[i] = new MyWidget();
-		widgets[i+1] = new MyButton();
-		widgets[i+2] =  new MyPanel();
-		widgets[i+3] = new MyWidget();
-	}
-	for(size_t i=0; i < OBJECTS_VECTOR_SIZE; i++) {
-		delete widgets[i];
+		initialize(w[0],b,p,w[1]);
+		release(w[0],b,p,w[1]);
 	}
 }
+
+#pragma GCC pop_options
 
 typedef void (*routine_f)();
 typedef double (*benchmark_f)(routine_f);
@@ -243,32 +226,52 @@ void print_benchmarks_result(const char* type,double libc_total, double so_total
 	}
 }
 
+static constexpr std::size_t CACHE_BLOCK = std::size_t(1 << 30);
+
+void BOOST_NOINLINE mem_set_noignore_cache(void * block) {
+	std::memset(block, 0, CACHE_BLOCK);
+}
+
+void heating_up() {
+	std::cout<< "Heating up OS pages" << std::endl;
+	void * block = std::malloc( CACHE_BLOCK );
+	mem_set_noignore_cache( block );
+	std::free(block);
+}
+
+
 int main(int argc, const char** argv)
 {
-	// make memory cache first
-	std::free( std::malloc( ( 1 << 30) / 2)  );
-
+	// mem cache
 	std::cout<<"Banchmarks testing objects:"<<std::endl;
 	std::cout<<"Small object  std new/delete"<<std::endl;
 	std::cout<<"Widget: " << sizeof(Widget) <<"    MyWidget: " << sizeof(MyWidget) <<" bytes" << std::endl;
 	std::cout<<"Button: " << sizeof(Button) <<"    MyButton: " << sizeof(MyButton) <<" bytes" << std::endl;
 	std::cout<<"Panel:  " <<  sizeof(Panel) <<"    MyPanel : " << sizeof(MyPanel) <<" bytes" << std::endl << std::endl;
 
+	std::cout<< "Objects count: " << OBJECTS_COUNT << std::endl;
+
 	// Single thread benchmark
 	std::cout<<"Single threading benchmark"<<std::endl;
+
+	heating_up();
 	std::cout<<"Running LibC benchmark"<<std::endl;
 	double libc_total = run_benchmarks(single_thread_benchmark, libc_routine);
 
+	heating_up();
 	std::cout<<"Running SO benchmark"<<std::endl;
 	double so_total = run_benchmarks(single_thread_benchmark, so_routine);
+
 	print_benchmarks_result("single", libc_total, so_total);
 
-	std::free( std::malloc( ( 1 << 30) / 2)  );
 	std::cout<<std::endl<<"Multi threading with " << THREADS << " threads benchmark"<<std::endl;
 
+
+	heating_up();
 	std::cout<<"Running LibC benchmark"<<std::endl;
 	libc_total = run_benchmarks(multi_threads_benchmark, libc_routine);
 
+	heating_up();
 	std::cout<<"Running SO benchmark"<<std::endl;
 	so_total = run_benchmarks(multi_threads_benchmark, so_routine);
 

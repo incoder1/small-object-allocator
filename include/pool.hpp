@@ -18,7 +18,8 @@ public:
 	~pool() BOOST_NOEXCEPT_OR_NOTHROW;
 	BOOST_FORCEINLINE void *malloc BOOST_PREVENT_MACRO_SUBSTITUTION(const std::size_t size)
 	{
-		if(NULL == arena_.get()) { reserve(size); }
+		if(NULL == arena_.get())
+			reserve(size);
 		return arena_->malloc();
 	}
 	BOOST_FORCEINLINE void free BOOST_PREVENT_MACRO_SUBSTITUTION(void * const ptr) BOOST_NOEXCEPT_OR_NOTHROW

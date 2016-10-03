@@ -109,6 +109,7 @@ void arena::shrink() BOOST_NOEXCEPT_OR_NOTHROW {
 		chunks_.insert( (*i)->begin(), (*i)->end(), BOOST_MOVE_BASE(chunk*,*i) );
 		++i;
 	}
+	non_empty.clear();
 	if(chunks_.empty()) {
 		chunk* first = create_new_chunk( block_size_ );
 		alloc_current_ = first;
