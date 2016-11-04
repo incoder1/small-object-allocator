@@ -229,7 +229,7 @@ void print_benchmarks_result(const char* type,double libc_total, double so_total
 static constexpr std::size_t CACHE_BLOCK = std::size_t(1 << 30);
 
 void BOOST_NOINLINE mem_set_noignore_cache(void * block) {
-	std::memset(block, 0, CACHE_BLOCK);
+	std::memset(block, 0xFF, CACHE_BLOCK);
 }
 
 void heating_up() {

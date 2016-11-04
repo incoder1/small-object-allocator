@@ -401,7 +401,7 @@ private:
 
 	inline node_type *create_node(BOOST_FWD_REF(E) e) {
 		node_type* result = node_allocator_.allocate(1);
-		result = new ( static_cast<void*>(result) ) node_type( boost::forward<E>(e) );
+		node_allocator_.construct( result, boost::forward<E>(e) );
 		return result;
 	}
 

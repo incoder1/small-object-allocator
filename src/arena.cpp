@@ -1,6 +1,8 @@
 #include "arena.hpp"
 
-namespace smallobject { namespace detail {
+namespace smallobject {
+
+namespace detail {
 
 //arena
 BOOST_FORCEINLINE chunk* arena::create_new_chunk(const std::size_t size)
@@ -10,8 +12,7 @@ BOOST_FORCEINLINE chunk* arena::create_new_chunk(const std::size_t size)
 	return new (ptr) chunk(size, begin);
 }
 
-BOOST_FORCEINLINE void arena::release_chunk(chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW
-{
+BOOST_FORCEINLINE void arena::release_chunk(chunk* const cnk) BOOST_NOEXCEPT_OR_NOTHROW {
 	// assert(cnk);
 	cnk->~chunk();
 	sys::xfree( static_cast<void*>(cnk) );
@@ -32,20 +33,16 @@ arena::arena(const std::size_t block_size):
 	chunks_.insert( first->begin(),  first->end(), BOOST_MOVE_BASE(chunk*,first) );
 }
 
-arena::~arena() BOOST_NOEXCEPT_OR_NOTHROW
-{
-	for(chunks_rmap::iterator it= chunks_.begin(); it != chunks_.end(); ++it) {
+arena::~arena() BOOST_NOEXCEPT_OR_NOTHROW {
+	for(chunks_rmap::iterator it= chunks_.begin(); it != chunks_.end(); ++it)
 		release_chunk( it->second );
-	}
 }
 
-BOOST_FORCEINLINE uint8_t* arena::try_to_alloc(chunk* const chnk) BOOST_NOEXCEPT_OR_NOTHROW
-{
+BOOST_FORCEINLINE uint8_t* arena::try_to_alloc(chunk* const chnk) BOOST_NOEXCEPT_OR_NOTHROW {
 	sys::read_lock lock(rwb_);
 	uint8_t *result = chnk->allocate(block_size_);
-	if(NULL != result) {
+	if(NULL != result)
 		alloc_current_ = chnk;
-	}
 	return result;
 }
 
@@ -60,9 +57,8 @@ void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_all
 	while( it != end ) {
 		current = it->second;
 		result = try_to_alloc(current);
-		if(result) {
+		if(result)
 			return static_cast<void*>(result);
-		}
 		++it;
 	}
 	// no free space left, create new chunk
@@ -75,10 +71,10 @@ void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_all
 	return static_cast<void*>(result);
 }
 
-bool arena::lookup_chunk_and_free(const uint8_t *ptr) BOOST_NOEXCEPT_OR_NOTHROW
-{
+bool arena::lookup_chunk_and_free(const uint8_t *ptr) BOOST_NOEXCEPT_OR_NOTHROW {
 	chunks_rmap::iterator it = chunks_.find(ptr);
-	if(it == chunks_.end() ) return false;
+	if(it == chunks_.end() )
+		return false;
 	try_to_free(ptr, it->second);
 	return true;
 }
@@ -97,20 +93,21 @@ void arena::shrink() BOOST_NOEXCEPT_OR_NOTHROW {
 #else
 			non_empty.push_back( BOOST_MOVE_BASE(chunk*, it->second) );
 #endif // __cplusplus
-		} else {
+		} else
 			release_chunk( it->second );
-		}
 		++it;
 	}
 	chunks_.clear();
 	chvector::iterator i = non_empty.begin();
 	chvector::iterator last = non_empty.end();
-	while(i != last) {
+	while(i != last)
+	{
 		chunks_.insert( (*i)->begin(), (*i)->end(), BOOST_MOVE_BASE(chunk*,*i) );
 		++i;
 	}
 	non_empty.clear();
-	if(chunks_.empty()) {
+	if(chunks_.empty())
+	{
 		chunk* first = create_new_chunk( block_size_ );
 		alloc_current_ = first;
 		free_current_  = first;
@@ -121,4 +118,5 @@ void arena::shrink() BOOST_NOEXCEPT_OR_NOTHROW {
 	}
 }
 
-}} //  namespace smallobject { namespace detail
+}
+} //  namespace smallobject { namespace detail

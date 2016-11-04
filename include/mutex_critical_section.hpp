@@ -13,6 +13,7 @@ namespace sys {
 	typedef boost::mutex critical_section;
 } // namespace sys
 
+
 typedef boost::unique_lock<boost::mutex> unique_lock;
 
 } //  namespace smallobject
