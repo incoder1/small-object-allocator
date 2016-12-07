@@ -22,7 +22,8 @@ private:
 	read_write_barier& operator=(const read_write_barier&);
 #endif // BOOST_NO_CXX11_DELETED_FUNCTIONS
 public:
-	read_write_barrier() BOOST_NOEXCEPT_OR_NOTHROW
+	read_write_barrier() BOOST_NOEXCEPT_OR_NOTHROW:
+        barrier_()
 	{
 		::pthread_rwlockattr_t attr;
 		::pthread_rwlockattr_init(&attr);

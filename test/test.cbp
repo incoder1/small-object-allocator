@@ -84,13 +84,16 @@
 				<Option type="1" />
 				<Option compiler="gcc" />
 				<Compiler>
-					<Add option="-fexpensive-optimizations" />
-					<Add option="-O3" />
-					<Add option="-std=gnu++14" />
+					<Add option="-O2" />
+					<Add option="-Wall" />
+					<Add option="-std=c++14" />
+					<Add option="-fno-rtti" />
 					<Add option="-fno-exceptions" />
+					<Add option="-DNDEBUG" />
 					<Add directory="include" />
 				</Compiler>
 				<Linker>
+					<Add option="-s" />
 					<Add library="boost_system" />
 					<Add library="boost_thread" />
 					<Add library="pthread" />
@@ -104,20 +107,23 @@
 				<Option type="1" />
 				<Option compiler="clang" />
 				<Compiler>
-					<Add option="-march=corei7" />
-					<Add option="-fexpensive-optimizations" />
 					<Add option="-O3" />
+					<Add option="-O2" />
+					<Add option="-m64" />
+					<Add option="-fexpensive-optimizations" />
 					<Add option="-fno-exceptions" />
 					<Add option="-fno-rtti" />
 					<Add option="-std=gnu++14" />
-					<Add directory="D:/cpp/boost_1_60_0" />
+					<Add option="-mtune=native" />
 					<Add directory="include" />
 				</Compiler>
 				<Linker>
-					<Add library="boost_system-mt.dll" />
-					<Add library="boost_thread-mt.dll" />
-					<Add directory="D:/cpp/boost_1_60_0/stage/gcc64/lib" />
-					<Add directory="../bin/release-win-gcc-x64" />
+					<Add option="-m64" />
+					<Add library="boost_atomic" />
+					<Add library="boost_system" />
+					<Add library="boost_thread" />
+					<Add library="pthread" />
+					<Add directory="../bin/release-clang-unix-amd64" />
 				</Linker>
 			</Target>
 		</Build>

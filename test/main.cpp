@@ -151,8 +151,11 @@ void BOOST_NOINLINE release(W* w, B *b, P *p, W* w1) {
 	delete w1;
 }
 
+#if defined( __GNUC__) && ! defined( __clang__)
 #pragma GCC push_options
 #pragma GCC optimize ("O0")
+#endif // __GNUC__
+
 void BOOST_NOINLINE so_routine()
 {
 	Widget* w[2] = {nullptr,nullptr};
@@ -176,16 +179,18 @@ void BOOST_NOINLINE libc_routine()
 	}
 }
 
+#if defined( __GNUC__) && ! defined( __clang__)
 #pragma GCC pop_options
+#endif // __GNUC__
 
 typedef void (*routine_f)();
 typedef double (*benchmark_f)(routine_f);
 
 double multi_threads_benchmark(routine_f routine) {
 	auto start = std::chrono::steady_clock::now();
-	std::thread workers[THREADS];
+	std::vector<std::thread> workers(THREADS);
 	for(size_t i=0; i < THREADS; i++) {
-		workers[i] = std::thread( std::bind( routine ) );
+		workers.push_back( std::thread( std::bind( routine ) ) );
 	}
 	for (std::thread &t: workers) {
       if (t.joinable()) {

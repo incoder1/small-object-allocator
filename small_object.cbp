@@ -71,8 +71,8 @@
 				<Option compiler="gcc" />
 				<Option createDefFile="1" />
 				<Compiler>
-					<Add option="-std=c++11" />
 					<Add option="-Wall" />
+					<Add option="-std=c++11" />
 					<Add option="-pg" />
 					<Add option="-g" />
 					<Add option="-Og" />
@@ -94,16 +94,18 @@
 				<Option compiler="gcc" />
 				<Option createDefFile="1" />
 				<Compiler>
-					<Add option="-fexpensive-optimizations" />
-					<Add option="-O3" />
 					<Add option="-Wall" />
 					<Add option="-fno-exceptions" />
 					<Add option="-fno-rtti" />
 					<Add option="-std=gnu++14" />
+					<Add option="-mtune=native" />
+					<Add option="-Ofast" />
+					<Add option="-DNDEBUG" />
 					<Add directory="include" />
 					<Add directory="include/posix" />
 				</Compiler>
 				<Linker>
+					<Add option="-s" />
 					<Add library="boost_system" />
 					<Add library="boost_thread" />
 				</Linker>
@@ -118,15 +120,18 @@
 				<Option createDefFile="1" />
 				<Option projectCompilerOptionsRelation="1" />
 				<Compiler>
-					<Add option="-Os" />
+					<Add option="-ftls-model=local-dynamic" />
+					<Add option="-fsanitize=thread" />
+					<Add option="-O3" />
 					<Add option="-std=c++14" />
-					<Add option="-emit-llvm" />
-					<Add option="-fno-exceptions" />
 					<Add option="-fno-rtti" />
 					<Add directory="include" />
 					<Add directory="include/posix" />
 				</Compiler>
 				<Linker>
+					<Add option="-fsanitize=thread" />
+					<Add option="-s" />
+					<Add library="boost_atomic" />
 					<Add library="boost_system" />
 					<Add library="boost_thread" />
 				</Linker>
@@ -145,13 +150,13 @@
 		<Unit filename="include/object.hpp" />
 		<Unit filename="include/object_allocator.hpp" />
 		<Unit filename="include/pool.hpp" />
-		<Unit filename="include/posix/mmap_allocator.hpp">
+		<Unit filename="include/posix/pthrrwlock.hpp" />
+		<Unit filename="include/posix/spinlock.hpp">
 			<Option target="debug-gcc-unix-amd64" />
 			<Option target="release-gcc-unix-amd64" />
 			<Option target="release-clang-unix-amd64" />
 		</Unit>
-		<Unit filename="include/posix/pthrrwlock.hpp" />
-		<Unit filename="include/posix/spinlock.hpp">
+		<Unit filename="include/posix/xallocator.hpp">
 			<Option target="debug-gcc-unix-amd64" />
 			<Option target="release-gcc-unix-amd64" />
 			<Option target="release-clang-unix-amd64" />
@@ -168,7 +173,12 @@
 			<Option target="debug-win-gcc-x64" />
 			<Option target="release-win-gcc-x64" />
 		</Unit>
-		<Unit filename="include/win/srwlock.hpp" />
+		<Unit filename="include/win/srwlock.hpp">
+			<Option target="debug-win-gcc-x64" />
+			<Option target="release-win-gcc-x64" />
+			<Option target="debug-gcc-unix-amd64" />
+			<Option target="release-gcc-unix-amd64" />
+		</Unit>
 		<Unit filename="src/arena.cpp" />
 		<Unit filename="src/chunk.cpp" />
 		<Unit filename="src/object.cpp" />

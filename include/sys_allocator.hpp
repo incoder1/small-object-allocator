@@ -8,7 +8,7 @@
 #ifdef BOOST_WINDOWS
 #	include "win/heapallocator.hpp"
 #elif defined(unix) || defined(__unix) || defined(_XOPEN_SOURCE) || defined(_POSIX_SOURCE)
-#	include "posix/mmap_allocator.hpp"
+#	include "posix/xallocator.hpp"
 #endif // defined
 
 #include "critical_section.hpp"
@@ -115,8 +115,7 @@ public:
 	}
 #endif // BOOST_HAS_VARIADIC_TMPL
 
-
-	size_type max_size() const noexcept
+	BOOST_FORCEINLINE size_type max_size() const noexcept
 	{
 		return SIZE_MAX / sizeof(value_type);
 	}

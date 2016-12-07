@@ -38,7 +38,23 @@ class critical_section:private boost::noncopyable
 
 } //  namespace sys
 
-typedef boost::unique_lock<sys::critical_section> unique_lock;
+//typedef boost::unique_lock<sys::critical_section> unique_lock;
+
+class unique_lock final: private boost::noncopyable {
+public:
+    unique_lock(sys::critical_section& cs) BOOST_NOEXCEPT_OR_NOTHROW:
+        cs_(cs)
+    {
+        cs.lock();
+    }
+    ~unique_lock() BOOST_NOEXCEPT_OR_NOTHROW
+    {
+        cs_.unlock();
+    }
+private:
+    sys::critical_section& cs_;
+};
+
 
 } // namespace smallobject
 

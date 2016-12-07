@@ -46,7 +46,7 @@ BOOST_FORCEINLINE uint8_t* arena::try_to_alloc(chunk* const chnk) BOOST_NOEXCEPT
 	return result;
 }
 
-void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION() BOOST_THROWS(std::bad_alloc)
+void* arena::malloc BOOST_PREVENT_MACRO_SUBSTITUTION()
 {
 	uint8_t* result = try_to_alloc(alloc_current_);
 	if(NULL != result) return static_cast<void*>(result);
