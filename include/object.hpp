@@ -9,7 +9,6 @@
 
 #include "object_allocator.hpp"
 
-
 namespace smallobject {
 
 class SYMBOL_VISIBLE object

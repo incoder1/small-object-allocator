@@ -13,6 +13,7 @@
 
 namespace smallobject { namespace sys {
 
+
 /// \brief Windows based private application heap
 /// memory allocator
 class SYMBOL_VISIBLE heap_allocator
