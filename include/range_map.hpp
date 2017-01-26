@@ -31,7 +31,10 @@ public:
 
 	typedef C comparator_type;
 
-	range(const K& min,const K& max):
+
+
+#ifndef NDEBUG
+	range(const K& min,const K& max) BOOST_NOEXCEPT_OR_NOTHROW:
 		min_(min),
 		max_(max)
 	{
@@ -39,37 +42,52 @@ public:
 		assert( cmp( min_ , max_ ) );
 	}
 
-	range(BOOST_COPY_ASSIGN_REF(range) rhs):
+	range(BOOST_RV_REF(K) min,BOOST_RV_REF(K) max) BOOST_NOEXCEPT:
+		min_( boost::forward<K>(min) ),
+		max_( boost::forward<K>(max) )
+	{
+		comparator_type cmp;
+		assert( cmp( min_ , max_ ) );
+	}
+#else
+	BOOST_CONSTEXPR range(const K& min,const K& max) BOOST_NOEXCEPT_OR_NOTHROW:
+		min_(min),
+		max_(max)
+	{}
+	BOOST_CONSTEXPR range(BOOST_RV_REF(K) min,BOOST_RV_REF(K) max) BOOST_NOEXCEPT:
+		min_( boost::forward<K>(min) ),
+		max_( boost::forward<K>(max) )
+	{}
+#endif // NDEBUG
+
+
+	BOOST_CONSTEXPR range(BOOST_COPY_ASSIGN_REF(range) rhs) BOOST_NOEXCEPT_OR_NOTHROW:
 		min_(rhs.min_),
 		max_(rhs.max_)
 	{}
 
-	inline range& operator=(BOOST_COPY_ASSIGN_REF(range) rhs)
+	inline range& operator=(BOOST_COPY_ASSIGN_REF(range) rhs) BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		range tmp(rhs);
-		tmp.swap(*this);
+		range( (rhs) ).swap( *this );
 		return *this;
 	}
 
-	range(BOOST_RV_REF(K) min,BOOST_RV_REF(K) max) BOOST_NOEXCEPT:
-		min_( BOOST_MOVE_BASE(K,min) ),
-		max_( BOOST_MOVE_BASE(K,max) )
-	{}
-
-	range(BOOST_RV_REF(range) rhs):
-		min_( BOOST_MOVE_BASE(range,rhs.min_) ),
-		max_( BOOST_MOVE_BASE(range, rhs.max_) )
+	BOOST_CONSTEXPR range(BOOST_RV_REF(range) rhs) BOOST_NOEXCEPT:
+		min_( BOOST_MOVE_BASE(K,rhs.min_) ),
+		max_( BOOST_MOVE_BASE(K,rhs.max_) )
 	{}
 
 	inline range& operator=(BOOST_RV_REF(range) rhs)
 	{
-		min_ = BOOST_MOVE_BASE(K, rhs.min_);
-		max_ = BOOST_MOVE_BASE(K, rhs.max_);
+		range( boost::forward<range>(rhs) ).swap( *this );
 		return *this;
 	}
 
-	~range()
-	{}
+	void swap(range& other) BOOST_NOEXCEPT_OR_NOTHROW {
+		std::swap(min_,other.min_);
+		std::swap(max_,other.max_);
+	}
+
 
 	BOOST_FORCEINLINE const K& min() const {
 		return min_;
@@ -77,12 +95,6 @@ public:
 
 	BOOST_FORCEINLINE const K& max() const {
 		return max_;
-	}
-
-	inline void swap(range& rhs)
-	{
-		std::swap( min_, rhs.min_ );
-		std::swap( max_, rhs.max_ );
 	}
 
 	BOOST_FORCEINLINE int8_t compare_to_key(const K& key) const
@@ -115,58 +127,53 @@ public:
 	typedef F first_type;
 	typedef S second_type;
 
-	movable_pair(BOOST_COPY_ASSIGN_REF(first_type) __f, BOOST_COPY_ASSIGN_REF(second_type) __s) BOOST_NOEXCEPT_OR_NOTHROW:
+	BOOST_CONSTEXPR movable_pair(BOOST_COPY_ASSIGN_REF(first_type) __f, BOOST_COPY_ASSIGN_REF(second_type) __s) BOOST_NOEXCEPT_OR_NOTHROW:
 		first(__f),
 		second(__s)
 	{}
 
-	movable_pair(BOOST_RV_REF(first_type) __f, BOOST_RV_REF(second_type) __s) BOOST_NOEXCEPT_OR_NOTHROW:
-       first( BOOST_MOVE_BASE(first_type,__f) ),
-       second( BOOST_MOVE_BASE(second_type,__s) )
+	BOOST_CONSTEXPR movable_pair(BOOST_RV_REF(first_type) __f, BOOST_RV_REF(second_type) __s) BOOST_NOEXCEPT:
+       first( boost::forward<first_type>(__f) ),
+       second( boost::forward<second_type>(__s) )
 	{}
 
-	movable_pair( BOOST_COPY_ASSIGN_REF(first_type) __f, BOOST_RV_REF(second_type) __s) BOOST_NOEXCEPT_OR_NOTHROW:
+	BOOST_CONSTEXPR movable_pair( BOOST_COPY_ASSIGN_REF(first_type) __f, BOOST_RV_REF(second_type) __s) BOOST_NOEXCEPT_OR_NOTHROW:
        first(__f),
-       second( BOOST_MOVE_BASE(second_type,__s) )
+       second( boost::forward<second_type>(__s) )
 	{}
 
-	movable_pair(BOOST_RV_REF(first_type) __f, BOOST_COPY_ASSIGN_REF(second_type) __s) BOOST_NOEXCEPT_OR_NOTHROW:
-       first( BOOST_MOVE_BASE(first_type,__f) ),
+	BOOST_CONSTEXPR movable_pair(BOOST_RV_REF(first_type) __f, BOOST_COPY_ASSIGN_REF(second_type) __s) BOOST_NOEXCEPT_OR_NOTHROW:
+       first( boost::forward<first_type>(__f) ),
        second(__s)
 	{}
 
-	movable_pair( BOOST_RV_REF(movable_pair) rhs) BOOST_NOEXCEPT_OR_NOTHROW:
+	BOOST_CONSTEXPR movable_pair( BOOST_RV_REF(movable_pair) rhs) BOOST_NOEXCEPT_OR_NOTHROW:
 	   first( BOOST_MOVE_BASE(first_type,rhs.first) ),
        second( BOOST_MOVE_BASE(second_type,rhs.second) )
 	{}
 
 	movable_pair& operator=( BOOST_RV_REF(movable_pair) rhs) BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		first = BOOST_MOVE_BASE(first_type,first);
-		second = BOOST_MOVE_BASE(second_type,first);
+		movable_pair( boost::forward<movable_pair>(rhs) ).swap( *this );
 		return *this;
 	}
 
-	movable_pair(BOOST_COPY_ASSIGN_REF(movable_pair) rhs) BOOST_NOEXCEPT_OR_NOTHROW:
+	BOOST_CONSTEXPR movable_pair(BOOST_COPY_ASSIGN_REF(movable_pair) rhs) BOOST_NOEXCEPT_OR_NOTHROW:
 		first(rhs.first),
 		second(rhs.second)
 	{}
 
 	movable_pair& operator=(BOOST_COPY_ASSIGN_REF(movable_pair) rhs) BOOST_NOEXCEPT_OR_NOTHROW
 	{
-		movable_pair tmp(rhs);
-		swap(tmp);
+		movable_pair( rhs ).swap( *this );
 		return *this;
 	}
 
-	void swap(movable_pair& rhs) BOOST_NOEXCEPT_OR_NOTHROW
+	inline void swap(movable_pair& rhs) BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		std::swap(first, rhs.first);
 		std::swap(second, rhs.second);
 	}
-
-	BOOST_FORCEINLINE ~movable_pair()
-	{}
 
 	first_type first;
 	second_type second;
@@ -211,8 +218,7 @@ public:
 
 	avl_tree_node& operator=(BOOST_FWD_REF(avl_tree_node) rhs) BOOST_NOEXCEPT
 	{
-		avl_tree_node tmp( boost::forward<avl_tree_node>(rhs) );
-		tmp.swap(  *this );
+		avl_tree_node( boost::forward<avl_tree_node>(rhs) ).swap( *this );
 		return *this;
 	}
 
@@ -223,9 +229,6 @@ public:
 		std::swap(height_, other.height_);
 	 	value_.swap( other.value_ );
 	}
-
-
-	inline ~avl_tree_node() BOOST_NOEXCEPT {}
 
 	BOOST_FORCEINLINE const value_type* value() const BOOST_NOEXCEPT_OR_NOTHROW
 	{
@@ -244,7 +247,8 @@ public:
 	BOOST_FORCEINLINE void set_left(self_type* const new_left) BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		left_ = new_left;
-		if(new_left) new_left->top_ = const_cast<self_type*>(this);
+		if(new_left)
+			new_left->top_ = const_cast<self_type*>(this);
 	}
 
 	BOOST_FORCEINLINE self_type* right() const BOOST_NOEXCEPT_OR_NOTHROW
@@ -255,7 +259,8 @@ public:
 	inline void set_right(self_type* const new_right) BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		right_ = new_right;
-		if(new_right) new_right->top_ = const_cast<self_type*>(this);
+		if(new_right)
+			new_right->top_ = const_cast<self_type*>(this);
 	}
 
 	BOOST_FORCEINLINE void make_root() BOOST_NOEXCEPT_OR_NOTHROW {
@@ -265,20 +270,19 @@ public:
 	static self_type* balance(self_type * const p) BOOST_NOEXCEPT_OR_NOTHROW
 	{
 		p->fix_height();
-		int8_t factor = b_factor(p);
-		if ( factor == 2 ) {
-			factor = b_factor( p->right() );
-			if ( factor < 0) {
-				p->set_right( rotate_right( p->right() ) );
-			}
-			return rotate_left(p);
-		}
-		if ( factor == -2 ) {
-			factor = b_factor( p->left() );
-			if ( factor > 0) {
-				p->set_left( rotate_left( p->left() ) );
-			}
-			return rotate_right(p);
+		switch( b_factor(p) ) {
+		case 2: {
+					if ( b_factor( p->right() ) < 0 ) {
+						p->set_right( rotate_right( p->right() ) );
+					}
+					return rotate_left(p);
+				}
+		case -2: {
+					if ( b_factor( p->left() ) > 0 ) {
+						p->set_left( rotate_left( p->left() ) );
+					}
+					return rotate_right(p);
+				 }
 		}
 		return p;
 	}

@@ -23,7 +23,7 @@ namespace smallobject { namespace detail {
 /// compares two pointers on allocated memory regions
 struct byte_ptr_less : public std::binary_function<uint8_t*, uint8_t*, bool>
 {
-	BOOST_CONSTEXPR bool operator()(const uint8_t* lsh, const uint8_t* rhs) const {
+	BOOST_CONSTEXPR bool operator()(const uint8_t* lsh, const uint8_t* rhs) const BOOST_NOEXCEPT_OR_NOTHROW {
 		return lsh < rhs;
 	}
 };
