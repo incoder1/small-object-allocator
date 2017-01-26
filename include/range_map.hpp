@@ -448,7 +448,7 @@ public:
 	typedef typename _node_t::value_type value_type;
 	typedef detail::avl_tree_iterator<_node_t> iterator;
 protected:
-	basic_range_map():
+	BOOST_CONSTEXPR basic_range_map() BOOST_NOEXCEPT_OR_NOTHROW:
 		root_(NULL)
 	{}
 public:

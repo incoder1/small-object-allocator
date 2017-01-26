@@ -29,13 +29,10 @@ typedef list_node<E> _self;
 public:
 	typedef E value_type;
 
-	list_node(BOOST_FWD_REF(E) e):
-		element_( BOOST_MOVE_BASE(E,e) ),
+	BOOST_CONSTEXPR list_node(BOOST_FWD_REF(E) e):
+		element_( boost::forward<E>(e) ),
 		prev_(NULL),
 		next_(NULL)
-	{}
-
-	~list_node()
 	{}
 
 	inline _self* next() const BOOST_NOEXCEPT_OR_NOTHROW
@@ -74,18 +71,15 @@ public:
 	typedef ptrdiff_t difference_type;
 	typedef std::forward_iterator_tag iterator_category;
 
-	list_iterator(node_type* const node) BOOST_NOEXCEPT_OR_NOTHROW:
+	BOOST_CONSTEXPR list_iterator(node_type* const node) BOOST_NOEXCEPT_OR_NOTHROW:
 		node_(node)
 	{}
 
-	list_iterator() BOOST_NOEXCEPT_OR_NOTHROW:
+	BOOST_CONSTEXPR list_iterator() BOOST_NOEXCEPT_OR_NOTHROW:
 		node_(NULL)
 	{}
 
-	~list_iterator() BOOST_NOEXCEPT_OR_NOTHROW
-	{}
-
-	list_iterator(const _self& rhs) BOOST_NOEXCEPT_OR_NOTHROW:
+	BOOST_CONSTEXPR list_iterator(const _self& rhs) BOOST_NOEXCEPT_OR_NOTHROW:
 		node_(rhs.node_)
 	{}
 
@@ -259,7 +253,7 @@ public:
 	typedef detail::list_const_iterator<node_type> const_iterator;
 	typedef detail::list_iterator<node_type> iterator;
 
-	BOOST_CONSTEXPR list():
+	BOOST_CONSTEXPR list() BOOST_NOEXCEPT_OR_NOTHROW:
 		head_(NULL),
 		node_allocator_()
 	{}
@@ -279,15 +273,17 @@ public:
 	/// Erase element by it constant iterator
 	/// \param position constant iterator on element
 	inline void erase(const const_iterator& position) {
-		if(end() == position) return;
-		do_erase_node( position.node() );
+		if(end() != position) {
+			do_erase_node( position.node() );
+		}
 	}
 
 	/// Erace element by it iterator
 	/// \param position iterator on element
 	inline void erase(const iterator& position) {
-		if(end() == position) return;
-		do_erase_node( position.node() );
+		if(end() != position) {
+			do_erase_node( position.node() );
+		}
 	}
 
 	/// Push element in the head of the list
